@@ -1,24 +1,19 @@
 from contextlib import asynccontextmanager
-import logging, sys
 
 from fastapi import FastAPI
 from fastapi_pagination import add_pagination
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import MONGO_URI, projectConfig
-from app.routers import games, teams, players
-from app.logger import logger
+from app.core.config import settings
+from app.core.logger import logger
+from app.api.main import api_router
+from app.core.db import create_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    client = AsyncIOMotorClient(MONGO_URI)
-
     try:
-        await init_beanie(
-            database=client.get_default_database(),
-            document_models=Document.__subclasses__() + UnionDoc.__subclasses__(),
-        )
+        create_db()
     except Exception as e:
         logger.error("Error initializing Beanie: %s", e)
 
@@ -26,9 +21,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=projectConfig.__projname__,
-    version=projectConfig.__version__,
-    description=projectConfig.__description__,
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    description=settings.DESCRIPTION,
     lifespan=lifespan,
 )
 add_pagination(app)
@@ -41,6 +36,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(players.router)
-app.include_router(games.router)
-app.include_router(teams.router)
+
+app.include_router(api_router, prefix=settings.API_V1_STR)

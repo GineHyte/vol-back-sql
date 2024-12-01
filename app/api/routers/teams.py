@@ -1,40 +1,50 @@
 from typing import List, Dict, Any
 
 from fastapi import APIRouter, HTTPException
-from bson import ObjectId
+from fastapi_pagination import Page, paginate
+from sqlmodel import select, Session
 
-from data import *
+from app.data.models import *
+from app.core.db import engine
 
 router = APIRouter(prefix="/teams")
 
 
 @router.get("/")
-async def get_teams() -> List[resp.Team]:
+async def get_teams() -> Page[Team]:
     """Get all teams"""
-    return await mdl.Team.find(projection_model=resp.Team, fetch_links=True).to_list()
+    with Session(engine) as session:
+        statement = select(Team)
+        return paginate(session.exec(statement).fetchall())
 
 
 @router.get("/{team_id}")
-async def get_team(team_id: str) -> resp.Team:
+async def get_team(team_id: str) -> Team:
     """Get team by id"""
-    return await mdl.Team.get(team_id, projection_model=resp.Team, fetch_links=True)
+    with Session(engine) as session:
+        statement = select(Team).where(Team.id == team_id)
+        team = session.exec(statement).first()
+        if team is None:
+            raise HTTPException(status_code=404, detail="Team not found")
+        return team
 
 
 @router.post("/")
-async def new_team(team: req.Team) -> resp.Status:
+async def new_team(team: Team) -> Status:
     """Create new team"""
-    for player_id in team.players:
-        player = await mdl.Player.get(player_id)
-        if not player:
-            raise HTTPException(status_code=404, detail="Player not found")
+    with Session(engine) as session:
+        for player_id in team.players:
+            player = await mdl.Player.get(player_id)
+            if not player:
+                raise HTTPException(status_code=404, detail="Player not found")
 
-    new_team = mdl.Team(
-        name=team.name,
-        players=team.players,
-        coach=team.coach,
-    )
-    await new_team.save()
-    return resp.Status(status="ok")
+        new_team = mdl.Team(
+            name=team.name,
+            players=team.players,
+            coach=team.coach,
+        )
+        await new_team.save()
+        return resp.Status(status="ok")
 
 
 # @router.get("/{team_id}")

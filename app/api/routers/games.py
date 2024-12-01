@@ -1,34 +1,28 @@
 from typing import List, Dict, Any, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import Page, paginate
+from sqlmodel import select, Session
 
-from data import *
+from app.data.models import *
+from app.core.db import engine
 
 router = APIRouter(prefix="/games")
 
 
 @router.get("/")
-async def get_games(player_id: Optional[str] = None) -> Page[resp.Game]:
+async def get_games(player_id: Optional[str] = None) -> Page[Game]:
     """Get all games"""
-    if player_id is not None:
-        return paginate(
-            await mdl.Game.find(
-                Or(
-                    In(player_id, mdl.Game.team_a.players or []),
-                    In(player_id, mdl.Game.team_b.players or []),
-                ),
-                projection_model=resp.Game,
-                fetch_links=True,
-            ).to_list()
-        )
-    return paginate(
-        await mdl.Game.find(projection_model=resp.Game, fetch_links=True).to_list()
-    )
+    with Session(engine) as session:
+        if player_id is not None:
+            statement = select(Player).where(Game.id == player_id)
+            return paginate(session.exec(statement).fetchall())
+        statement = select(Game)
+        return paginate(session.exec(select(Game)).fetchall())
 
 
 @router.post("/")
-async def new_game(game: req.Game) -> resp.Status:
+async def new_game(game: Game) -> Status:
     """Create new game"""
     if game.team_a == game.team_b:
         raise HTTPException(
@@ -39,23 +33,32 @@ async def new_game(game: req.Game) -> resp.Status:
             raise HTTPException(
                 status_code=400, detail="From datetime should be less than to datetime"
             )
-    if mdl.Team.get(game.team_a) is None:
-        raise HTTPException(status_code=404, detail="Team A not found")
-    if mdl.Team.get(game.team_b) is None:
-        raise HTTPException(status_code=404, detail="Team B not found")
-    new_game = mdl.Game(
-        name=game.name,
-        description=game.description,
-        from_datetime=game.from_datetime,
-        to_datetime=game.to_datetime,
-        team_a=game.team_a,
-        team_b=game.team_b,
-    )
-    await new_game.save()
-    return resp.Status(status="ok")
+
+    with Session(engine) as session:
+        statement = select(Team).where(Team.id == game.team_a)
+        if session.exec(statement).first() is None:
+            raise HTTPException(status_code=404, detail="Team A not found")
+        if session.exec(statement).first() is None:
+            raise HTTPException(status_code=404, detail="Team B not found")
+        new_game = Game(
+            name=game.name,
+            description=game.description,
+            from_datetime=game.from_datetime,
+            to_datetime=game.to_datetime,
+            team_a=game.team_a,
+            team_b=game.team_b,
+        )
+        await session.add(new_game)
+        await session.commit()
+        return Status(status="ok")
 
 
 @router.get("/{game_id}")
-async def get_game(game_id: str) -> resp.Game:
+async def get_game(game_id: str) -> Game:
     """Get game by id"""
-    return await mdl.Game.get(game_id, projection_model=resp.Game, fetch_links=True)
+    with Session(engine) as session:
+        statement = select(Game).where(Game.id == game_id)
+        game = session.exec(statement).first()
+        if game is None:
+            raise HTTPException(status_code=404, detail="Game not found")
+        return game

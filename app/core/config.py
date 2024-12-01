@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = secrets.token_urlsafe(32)
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str
+    DESCRIPTION: str
+    VERSION: str
 
     POSTGRES_SERVER: str
     POSTGRES_USER: str

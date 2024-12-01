@@ -2,40 +2,48 @@ from typing import List, Dict, Any
 
 from fastapi import APIRouter, HTTPException
 from fastapi_pagination import Page, paginate
-from beanie import PydanticObjectId
+from sqlmodel import select, Session
 
-from data import *
+from app.core.db import engine
+from app.data.models import *
 
 router = APIRouter(prefix="/players")
 
 
 @router.get("/")
-async def get_players() -> Page[resp.Player]:
+async def get_players() -> Page[Player]:
     """Get all players"""
-    return paginate(await mdl.Player.find(projection_model=resp.Player).to_list())
+    with Session(engine) as session:
+        statement = select(Player)
+        return paginate(session.exec(statement).fetchall())
 
 
 @router.get("/{player_id}")
-async def get_player(player_id: str) -> resp.Player:
+async def get_player(player_id: str) -> Player:
     """Get player by id"""
-    return await mdl.Player.get(
-        player_id, projection_model=resp.Player, fetch_links=True
-    )
+    with Session(engine) as session:
+        statement = select(Player).where(Player.id == player_id)
+        player = session.exec(statement).first()
+        if player is None:
+            raise HTTPException(status_code=404, detail="Player not found")
+        return player
 
 
 @router.post("/")
-async def new_player(player: req.Player) -> resp.Status:
+async def new_player(player: Player) -> Status:
     """Create new player"""
-    new_player = mdl.Player(
-        first_name=player.first_name,
-        last_name=player.last_name,
-        age=player.age,
-        height=player.height,
-        weight=player.weight,
-        amplua=player.amplua,
-    )
-    await new_player.save()
-    return resp.Status(status="ok")
+    with Session(engine) as session:
+        new_player = Player(
+            first_name=player.first_name,
+            last_name=player.last_name,
+            age=player.age,
+            height=player.height,
+            weight=player.weight,
+            amplua=player.amplua,
+        )
+        await session.add(new_player)
+        await session.commit()
+        return Status(status="ok")
 
 
 # @router.get("/{player_id}")

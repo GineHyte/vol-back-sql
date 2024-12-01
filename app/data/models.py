@@ -150,3 +150,8 @@ class ExerciseType(SQLModelID):
     name: str
     description: Optional[str]
     coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+
+
+class Status(SQLModel):
+    status: str
+    message: str
