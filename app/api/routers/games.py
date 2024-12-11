@@ -7,15 +7,14 @@ from sqlmodel import select, Session
 from app.data.models import *
 from app.core.db import engine
 
-router = APIRouter(prefix="/games")
-
+router = APIRouter()
 
 @router.get("/")
 async def get_games(player_id: Optional[str] = None) -> Page[Game]:
     """Get all games"""
     with Session(engine) as session:
         if player_id is not None:
-            statement = select(Player).where(Game.id == player_id)
+            statement = select(Game).where(Game.id == player_id)
             return paginate(session.exec(statement).fetchall())
         statement = select(Game)
         return paginate(session.exec(select(Game)).fetchall())

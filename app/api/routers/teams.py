@@ -7,7 +7,7 @@ from sqlmodel import select, Session
 from app.data.models import *
 from app.core.db import engine
 
-router = APIRouter(prefix="/teams")
+router = APIRouter()
 
 
 @router.get("/")

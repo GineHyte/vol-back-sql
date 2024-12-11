@@ -4,7 +4,7 @@ from sqlmodel import create_engine, SQLModel, Session
 from app.core.config import settings
 
 connect_args = {"check_same_thread": False}
-engine = create_engine(settings.DATABASE_URI, echo=True, connect_args=connect_args)
+engine = create_engine("sqlite:///" + settings.SQLITE_DB, echo=True, connect_args=connect_args)
 
 
 def get_session():
@@ -12,5 +12,5 @@ def get_session():
         yield session
 
 
-def create_db():
+def init_db():
     SQLModel.metadata.create_all(engine)

@@ -7,8 +7,7 @@ from sqlmodel import select, Session
 from app.core.db import engine
 from app.data.models import *
 
-router = APIRouter(prefix="/players")
-
+router = APIRouter()
 
 @router.get("/")
 async def get_players() -> Page[Player]:
