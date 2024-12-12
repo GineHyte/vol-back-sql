@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import Page, paginate
 from sqlmodel import select, Session
 
@@ -7,31 +7,50 @@ from app.data.db import Player
 from app.data.utils import Status
 from app.data.create import PlayerCreate
 from app.data.update import PlayerUpdate
+from app.data.public import PlayerPublic
+
+from app.core.db import get_session
+from app.core.logger import logger
 
 router = APIRouter()
 
 
-@router.get("/")
-async def get_players() -> Page[Player]:
-    """Get all players"""
-    with Session(engine) as session:
-        statement = select(Player)
-        return paginate(session.exec(statement).fetchall())
+@router.get("/", response_model=Page[PlayerPublic])
+async def get_player(*, session: Session = Depends(get_session)) -> Page[PlayerPublic]:
+    """Get all teams"""
+    db_players = session.exec(select(Player)).all()
+    players = []
+    for db_player in db_players:
+        teams = db_player.teams
+        db_player.teams = []
+        player = PlayerPublic.model_validate(db_player)
+        player.teams = list(map(lambda x: x.id, teams))
+        players.append(player)
+    logger.info(players)
+    return paginate(players)
 
 
-@router.get("/{player_id}")
-async def get_player(player_id: str) -> Player:
+@router.get("/{player_id}", response_model=PlayerPublic)
+async def get_player(
+    *, session: Session = Depends(get_session), player_id: str
+) -> PlayerPublic:
     """Get player by id"""
-    with Session(engine) as session:
-        statement = select(Player).where(Player.id == player_id)
-        player = session.exec(statement).first()
-        if player is None:
-            raise HTTPException(status_code=404, detail="Player not found")
-        return player
+    db_player = session.get(Player, player_id)
+    if db_player is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    teams = db_player.teams
+    db_player.teams = []
+    player = PlayerPublic.model_validate(db_player)
+    player.teams = list(map(lambda x: x.id, teams))
+
+    return player
 
 
 @router.post("/")
-async def new_player(player: PlayerCreate) -> Status:
+async def new_player(
+    *, session: Session = Depends(get_session), player: PlayerCreate
+) -> Status:
     """Create new player"""
     new_player = Player(**player.model_dump())
     with Session(engine) as session:
@@ -64,7 +83,8 @@ async def update_player(player_id: str, new_player: PlayerUpdate) -> Status:
             raise HTTPException(status_code=404, detail="Player not found")
         else:
             for field, value in new_player.model_dump().items():
-                if value is None: continue
+                if value is None:
+                    continue
                 setattr(player, field, value)
             session.add(player)
             session.commit()

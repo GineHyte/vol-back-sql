@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import Page, paginate
-from sqlmodel import select, Session, delete
+from sqlmodel import select, Session, delete, col
 
 from app.core.db import engine, get_session
 from app.data.db import Team, Player, TeamToPlayer
@@ -22,9 +22,11 @@ async def get_teams(*, session: Session = Depends(get_session)) -> Page[TeamPubl
     db_teams = session.exec(select(Team)).all()
     teams = []
     for db_team in db_teams:
-        team = TeamPublic.model_validate(db_team, ex)
-        team.players = list(map(lambda x: x.id, team.players))
-        logger.debug(team.players)
+        players = db_team.players
+        db_team.players = []
+        team = TeamPublic.model_validate(db_team)
+        team.players = list(map(lambda x: x.id, players))
+        teams.append(team)
     logger.info(teams)
     return paginate(teams)
 
@@ -43,23 +45,25 @@ async def new_team(
     *, session: Session = Depends(get_session), team: TeamCreate
 ) -> Status:
     """Create new team"""
-    with Session(engine) as session:
-        new_team = Team(**team.model_dump(exclude={"players"}))
-        # get new id
-        new_id = session.exec(select(Team.id).order_by(Team.id.desc())).first() or 1
-        logger.debug("creating new team with id %s", new_id)
-        player_ids = list(map(lambda x: x.player, team.players))
-        player_ampluas = list(map(lambda x: x.amplua, team.players))
-        statement = select(Player).where(Player.id.in_(player_ids))
-        players: List[Player] = session.exec(statement).all()
-        if len(players) != len(player_ids):
-            raise HTTPException(status_code=404, detail="Player not found")
-        for player, amplua in zip(players, player_ampluas):
-            relation = TeamToPlayer(team_id=new_id, player_id=player.id, amplua=amplua)
-            logger.debug(relation)
-            session.add(relation)
-        session.add(new_team)
-        session.commit()
+    new_team = Team(**team.model_dump(exclude={"players"}))
+    # get new id
+    new_id = (
+        session.exec(select(col(Team.id)).order_by(Team.id.desc())).first() or 0
+    ) + 1
+    logger.debug("creating new team with id %s", new_id)
+    player_ids = list(map(lambda x: x.player, team.players))
+    player_ampluas = list(map(lambda x: x.amplua, team.players))
+    statement = select(Player).where(Player.id.in_(player_ids))
+    players: List[Player] = session.exec(statement).all()
+
+    if len(players) != len(player_ids):
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    for player, amplua in zip(players, player_ampluas):
+        relation = TeamToPlayer(team_id=new_id, player_id=player.id, amplua=amplua)
+        session.add(relation)
+    session.add(new_team)
+    session.commit()
     return Status(status="ok", detail="Team created")
 
 

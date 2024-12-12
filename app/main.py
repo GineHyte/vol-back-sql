@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi_pagination import add_pagination
+from fastapi_pagination.utils import disable_installed_extensions_check
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
@@ -13,6 +14,7 @@ app = FastAPI(
     description=settings.DESCRIPTION,
 )
 add_pagination(app)
+disable_installed_extensions_check()
 
 init_db()
 logger.info("Database initialized")

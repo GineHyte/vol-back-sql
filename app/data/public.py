@@ -1,8 +1,8 @@
 from typing import List, Optional
 
-from sqlmodel import Field
+from sqlmodel import Field, SQLModel
 
-from app.data.utils import Impact
+from app.data.utils import Impact, Amplua
 from app.data.base import (
     CoachBase,
     PlayerBase,
@@ -27,7 +27,7 @@ class PlayerPublic(PlayerBase):
 
 
 class TeamPublic(TeamBase):
-    id: Optional[int] = Field(primary_key=True)
+    id: Optional[int] = Field(primary_key=True, description="Team ID")
     players: List[int] = Field(..., description="List of players IDs")
 
 
@@ -89,3 +89,9 @@ class ExercisePublic(ExerciseBase):
     difficulty: int
     category_id: int = Field(..., foreign_key="exercisecategory.id")
     type_id: int = Field(..., foreign_key="exercisetype.id")
+
+
+class TeamToPlayerPublic(SQLModel):
+    team_id: Optional[int] = Field(None, foreign_key="team.id", primary_key=True)
+    player_id: Optional[int] = Field(None, foreign_key="player.id", primary_key=True)
+    amplua: Amplua
