@@ -1,39 +1,51 @@
 from typing import List, Optional
-from datetime import datetime
 
-from sqlmodel import Field, SQLModel, Relationship
+from sqlmodel import Field
 
 from app.data.utils import Impact
-from app.data.relations import TeamToPlayer
-
-
+from app.data.base import (
+    CoachBase,
+    PlayerBase,
+    TeamBase,
+    GameBase,
+    TechBase,
+    SubtechBase,
+    ActionBase,
+    ExerciseCategoryBase,
+    ExerciseTypeBase,
+    ExerciseBase,
+)
 
 
 class CoachPublic(CoachBase):
+    id: Optional[int] = Field(None, description="Coach ID")
+
+
+class PlayerPublic(PlayerBase):
+    id: Optional[int] = Field(None, description="Player ID")
+    teams: Optional[List[int]] = Field(None, description="List of teams IDs")
+
+
+class TeamPublic(TeamBase):
     id: Optional[int] = Field(primary_key=True)
+    players: List[int] = Field(..., description="List of players IDs")
 
 
-class TeamPublic(TeamBase, SQLModel, table=True):
-    id: Optional[int] = Field(primary_key=True)
-    players: List[Player] = Relationship(
-        back_populates="teams", link_model=TeamToPlayer
-    )
-
-class GamePublic(SQLModel, table=True):
+class GamePublic(GameBase):
     id: Optional[int] = Field(primary_key=True)
     team_a_score: int = Field(0)
     team_b_score: int = Field(0)
     coach_id: Optional[int] = Field(None, foreign_key="coach.id")
 
 
-class TechPublic(SQLModel, table=True):
+class TechPublic(TechBase):
     id: Optional[int] = Field(primary_key=True)
     name: str
     description: Optional[str]
     coach_id: Optional[int] = Field(None, foreign_key="coach.id")
 
 
-class Subtech(SQLModel, table=True):
+class SubtechPublic(SubtechBase):
     id: Optional[int] = Field(primary_key=True)
     tech_id: int = Field(..., foreign_key="tech.id")
     name: str
@@ -41,7 +53,7 @@ class Subtech(SQLModel, table=True):
     coach_id: Optional[int] = Field(None, foreign_key="coach.id")
 
 
-class Action(SQLModel, table=True):
+class ActionPublic(ActionBase):
     id: Optional[int] = Field(primary_key=True)
     game: int = Field(..., foreign_key="game.id")
     team: int = Field(..., foreign_key="team.id")
@@ -52,21 +64,21 @@ class Action(SQLModel, table=True):
     impact: Impact
 
 
-class ExerciseCategory(SQLModel, table=True):
+class ExerciseCategoryPublic(ExerciseCategoryBase):
     id: Optional[int] = Field(primary_key=True)
     name: str
     description: Optional[str]
     coach_id: Optional[int] = Field(None, foreign_key="coach.id")
 
 
-class ExerciseType(SQLModel, table=True):
+class ExerciseTypePublic(ExerciseTypeBase):
     id: Optional[int] = Field(primary_key=True)
     name: str
     description: Optional[str]
     coach_id: Optional[int] = Field(None, foreign_key="coach.id")
 
 
-class Exercise(SQLModel, table=True):
+class ExercisePublic(ExerciseBase):
     id: Optional[int] = Field(primary_key=True)
     name: str
     description: Optional[str]
@@ -77,8 +89,3 @@ class Exercise(SQLModel, table=True):
     difficulty: int
     category_id: int = Field(..., foreign_key="exercisecategory.id")
     type_id: int = Field(..., foreign_key="exercisetype.id")
-
-
-class Status(SQLModel):
-    status: Optional[str] = Field(None, description="Status")
-    detail: Optional[str] = Field(None, description="Message")

@@ -1,9 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from fastapi_pagination import Page, paginate
-from sqlmodel import select, Session, delete
+from sqlmodel import select, Session
 
 from app.core.db import engine
-from app.data.db import Player, PlayerCreate, PlayerUpdate, Status
+from app.data.db import Player
+from app.data.utils import Status
+from app.data.create import PlayerCreate
+from app.data.update import PlayerUpdate
 
 router = APIRouter()
 

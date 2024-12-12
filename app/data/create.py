@@ -2,7 +2,8 @@ from typing import List
 
 from sqlmodel import Field
 
-from app.data.base import TeamBase, PlayerBase, CoachBase, PlayerAmplua
+from app.data.base import TeamBase, PlayerBase, CoachBase
+from app.data.utils import PlayerAmplua
 
 
 class CoachCreate(CoachBase):

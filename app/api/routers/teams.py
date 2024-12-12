@@ -5,17 +5,27 @@ from fastapi_pagination import Page, paginate
 from sqlmodel import select, Session, delete
 
 from app.core.db import engine, get_session
-from app.data.db import Team, TeamCreate, TeamUpdate, Status, Player, TeamToPlayer
+from app.data.db import Team, Player, TeamToPlayer
+from app.data.utils import Status
+from app.data.update import TeamUpdate
+from app.data.create import TeamCreate
+from app.data.public import TeamPublic
 from app.core.logger import logger
 
 
 router = APIRouter()
 
 
-@router.get("/")
-async def get_teams(*, session: Session = Depends(get_session)) -> Page[Team]:
+@router.get("/", response_model=Page[TeamPublic])
+async def get_teams(*, session: Session = Depends(get_session)) -> Page[TeamPublic]:
     """Get all teams"""
-    teams = session.exec(select(Team)).all()
+    db_teams = session.exec(select(Team)).all()
+    teams = []
+    for db_team in db_teams:
+        team = TeamPublic.model_validate(db_team, ex)
+        team.players = list(map(lambda x: x.id, team.players))
+        logger.debug(team.players)
+    logger.info(teams)
     return paginate(teams)
 
 
@@ -28,7 +38,7 @@ async def get_team(*, session: Session = Depends(get_session), team_id: str) -> 
     return team
 
 
-@router.post("/")
+@router.post("/", response_model=Status)
 async def new_team(
     *, session: Session = Depends(get_session), team: TeamCreate
 ) -> Status:
@@ -36,8 +46,7 @@ async def new_team(
     with Session(engine) as session:
         new_team = Team(**team.model_dump(exclude={"players"}))
         # get new id
-        new_id = session.exec(select(Team.id).order_by(Team.id.desc())).first()
-        new_id = new_id.id + 1 if new_id else 1
+        new_id = session.exec(select(Team.id).order_by(Team.id.desc())).first() or 1
         logger.debug("creating new team with id %s", new_id)
         player_ids = list(map(lambda x: x.player, team.players))
         player_ampluas = list(map(lambda x: x.amplua, team.players))
