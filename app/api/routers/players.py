@@ -1,13 +1,12 @@
-from typing import List, Dict, Any
-
 from fastapi import APIRouter, HTTPException
 from fastapi_pagination import Page, paginate
-from sqlmodel import select, Session
+from sqlmodel import select, Session, delete
 
 from app.core.db import engine
-from app.data.models import *
+from app.data.db import Player, PlayerCreate, PlayerUpdate, Status
 
 router = APIRouter()
+
 
 @router.get("/")
 async def get_players() -> Page[Player]:
@@ -29,42 +28,42 @@ async def get_player(player_id: str) -> Player:
 
 
 @router.post("/")
-async def new_player(player: Player) -> Status:
+async def new_player(player: PlayerCreate) -> Status:
     """Create new player"""
+    new_player = Player(**player.model_dump())
     with Session(engine) as session:
-        new_player = Player(
-            first_name=player.first_name,
-            last_name=player.last_name,
-            age=player.age,
-            height=player.height,
-            weight=player.weight,
-            amplua=player.amplua,
-        )
-        await session.add(new_player)
-        await session.commit()
+        session.add(new_player)
+        session.commit()
+    return Status(status="ok")
+
+
+@router.delete("/{player_id}")
+async def delete_player(player_id: str) -> Status:
+    """Delete player by id"""
+    with Session(engine) as session:
+        statement = select(Player).where(Player.id == player_id)
+        player = session.exec(statement).first()
+        if player is None:
+            raise HTTPException(status_code=404, detail="Player not found")
+        else:
+            session.delete(player)
+            session.commit()
         return Status(status="ok")
 
 
-# @router.get("/{player_id}")
-# async def get_player(player_id: str) -> Dict[str, Any]:
-#     return (await mdl.Player.find_one(mdl.Player.id == player_id)).model_dump()
-
-
-# @router.delete("/{player_id}")
-# async def delete_player(player_id: str) -> Dict[str, Any]:
-#     player = await mdl.Player.find_one(mdl.Player.id == ObjectId(player_id))
-#     if not player:
-#         raise HTTPException(status_code=404, detail="Player not found")
-#     await player.delete()
-#     return player.model_dump()
-
-
-# @router.put("/{player_id}")
-# async def update_player(player_id: str, player: NewPlayer) -> Dict[str, Any]:
-#     player_old = await mdl.Player.find_one(mdl.Player.id == ObjectId(player_id))
-#     if not player_old:
-#         raise HTTPException(status_code=404, detail="Player not found")
-
-#     player = await player_old.set(player.model_dump())
-
-#     return player.model_dump()
+@router.put("/{player_id}")
+async def update_player(player_id: str, new_player: PlayerUpdate) -> Status:
+    """Update player by id"""
+    with Session(engine) as session:
+        statement = select(Player).where(Player.id == player_id)
+        player = session.exec(statement).first()
+        if player is None:
+            raise HTTPException(status_code=404, detail="Player not found")
+        else:
+            for field, value in new_player.model_dump().items():
+                if value is None: continue
+                setattr(player, field, value)
+            session.add(player)
+            session.commit()
+            session.refresh(player)
+        return Status(status="ok")

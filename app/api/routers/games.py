@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import Page, paginate
 from sqlmodel import select, Session
 
-from app.data.models import *
+from app.data.db import *
 from app.core.db import engine
 
 router = APIRouter()

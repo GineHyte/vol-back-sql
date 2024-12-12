@@ -1,70 +1,87 @@
-from typing import List, Dict, Any
+from typing import List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import Page, paginate
-from sqlmodel import select, Session
+from sqlmodel import select, Session, delete
 
-from app.data.models import *
-from app.core.db import engine
+from app.core.db import engine, get_session
+from app.data.db import Team, TeamCreate, TeamUpdate, Status, Player, TeamToPlayer
+from app.core.logger import logger
+
 
 router = APIRouter()
 
 
 @router.get("/")
-async def get_teams() -> Page[Team]:
+async def get_teams(*, session: Session = Depends(get_session)) -> Page[Team]:
     """Get all teams"""
-    with Session(engine) as session:
-        statement = select(Team)
-        return paginate(session.exec(statement).fetchall())
+    teams = session.exec(select(Team)).all()
+    return paginate(teams)
 
 
 @router.get("/{team_id}")
-async def get_team(team_id: str) -> Team:
+async def get_team(*, session: Session = Depends(get_session), team_id: str) -> Team:
     """Get team by id"""
+    team = session.get(Team, team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    return team
+
+
+@router.post("/")
+async def new_team(
+    *, session: Session = Depends(get_session), team: TeamCreate
+) -> Status:
+    """Create new team"""
+    with Session(engine) as session:
+        new_team = Team(**team.model_dump(exclude={"players"}))
+        # get new id
+        new_id = session.exec(select(Team.id).order_by(Team.id.desc())).first()
+        new_id = new_id.id + 1 if new_id else 1
+        logger.debug("creating new team with id %s", new_id)
+        player_ids = list(map(lambda x: x.player, team.players))
+        player_ampluas = list(map(lambda x: x.amplua, team.players))
+        statement = select(Player).where(Player.id.in_(player_ids))
+        players: List[Player] = session.exec(statement).all()
+        if len(players) != len(player_ids):
+            raise HTTPException(status_code=404, detail="Player not found")
+        for player, amplua in zip(players, player_ampluas):
+            relation = TeamToPlayer(team_id=new_id, player_id=player.id, amplua=amplua)
+            logger.debug(relation)
+            session.add(relation)
+        session.add(new_team)
+        session.commit()
+    return Status(status="ok", detail="Team created")
+
+
+@router.delete("/{team_id}")
+async def delete_team(team_id: str) -> Status:
+    """Delete team by id"""
     with Session(engine) as session:
         statement = select(Team).where(Team.id == team_id)
         team = session.exec(statement).first()
         if team is None:
             raise HTTPException(status_code=404, detail="Team not found")
-        return team
+        else:
+            session.delete(team)
+            session.commit()
+        return Status(status="ok", detail="Team deleted")
 
 
-@router.post("/")
-async def new_team(team: Team) -> Status:
-    """Create new team"""
+@router.put("/{team_id}")
+async def update_team(team_id: str, new_team: TeamUpdate) -> Status:
+    """Update player by id"""
     with Session(engine) as session:
-        for player_id in team.players:
-            player = await mdl.Player.get(player_id)
-            if not player:
-                raise HTTPException(status_code=404, detail="Player not found")
-
-        new_team = mdl.Team(
-            name=team.name,
-            players=team.players,
-            coach=team.coach,
-        )
-        await new_team.save()
-        return resp.Status(status="ok")
-
-
-# @router.get("/{team_id}")
-# async def get_team(team_id: str) -> Dict[str, Any]:
-#     return (await Team.find_one(Team.id == team_id)).model_dump()
-
-# @router.delete("/{team_id}")
-# async def delete_team(team_id: str) -> Dict[str, Any]:
-#     team = await Team.find_one(Team.id == ObjectId(team_id))
-#     if not team:
-#         raise HTTPException(status_code=404, detail="Team not found")
-#     await team.delete()
-#     return team.model_dump()
-
-# @router.put("/{team_id}")
-# async def update_team(team_id: str, team: NewTeam) -> Dict[str, Any]:
-#     team_old = await Team.find_one(Team.id == ObjectId(team_id))
-#     if not team_old:
-#         raise HTTPException(status_code=404, detail="Team not found")
-
-#     team = await team_old.set(team.model_dump())
-
-#     return team.model_dump()
+        statement = select(Team).where(Team.id == team_id)
+        team = session.exec(statement).first()
+        if team is None:
+            raise HTTPException(status_code=404, detail="Team not found")
+        else:
+            for field, value in new_team.model_dump().items():
+                if value is None:
+                    continue
+                setattr(team, field, value)
+            session.add(team)
+            session.commit()
+            session.refresh(team)
+        return Status(status="ok", detail="Team updated")

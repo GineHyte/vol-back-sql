@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlmodel import Field, SQLModel, Relationship
 
-from app.data.utils import SQLModel, Impact
+from app.data.utils import Impact
 from app.data.relations import TeamToPlayer
 
 
@@ -12,7 +12,6 @@ class CoachBase(SQLModel):
     last_name: str
     email: Optional[str] = Field(None, description="Email")
     phone: Optional[str] = Field(None, description="Phone")
-    username: str
     password: str
     minutes_per_week: float = Field(default=0)
     minutes_per_training: float = Field(default=0)
@@ -21,30 +20,19 @@ class CoachBase(SQLModel):
 class CoachUpdate(CoachBase):
     first_name: Optional[str] = Field(None, description="First Name")
     last_name: Optional[str] = Field(None, description="Last Name")
-    username: Optional[str] = Field(None, description="Username")
     password: Optional[str] = Field(None, description="Password")
+    minutes_per_week: Optional[float] = Field(None, description="Minutes per week")
+    minutes_per_training: Optional[float] = Field(
+        None, description="Minutes per training"
+    )
 
 
 class CoachCreate(CoachBase):
-    pass
+    username: str
 
 
-class Coach(CoachBase, SQLModel, table=True):
+class Coach(CoachCreate, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
-    pass
-
-
-class TeamBase(SQLModel):
-    name: str
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
-
-
-class TeamUpdate(TeamBase):
-    pass
-
-
-class TeamCreate(TeamBase):
-    pass
 
 
 class PlayerBase(SQLModel):
@@ -54,7 +42,6 @@ class PlayerBase(SQLModel):
     height: Optional[float] = Field(None, description="Height")
     weight: Optional[float] = Field(None, description="Weight")
     image_url: Optional[str] = Field(None, description="Image URL")
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class PlayerUpdate(PlayerBase):
@@ -66,21 +53,33 @@ class PlayerCreate(PlayerBase):
     pass
 
 
-class Player(PlayerBase, SQLModel, table=True):
+
+class Player(PlayerBase, table=True):
     id: Optional[int] = Field(primary_key=True)
     teams: List["Team"] = Relationship(
         back_populates="players", link_model=TeamToPlayer
     )
-    pass
+    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+
+
+class TeamBase(SQLModel):
+    name: str
+    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+
+
+class TeamUpdate(TeamBase):
+    players: Optional[List[PlayerAmplua]] = Field(None, description="List of jsons {player: int, amplua: str}")
+
+
+class TeamCreate(TeamBase):
+    players: List[PlayerAmplua] = Field(..., description="List of jsons {player: int, amplua: str}")
 
 
 class Team(TeamBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
-    name: str
     players: List[Player] = Relationship(
         back_populates="teams", link_model=TeamToPlayer
     )
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class GameBase(SQLModel):
@@ -153,5 +152,5 @@ class Exercise(SQLModel, table=True):
 
 
 class Status(SQLModel):
-    status: str
-    message: str
+    status: Optional[str] = Field(None, description="Status")
+    detail: Optional[str] = Field(None, description="Message")

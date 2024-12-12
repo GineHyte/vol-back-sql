@@ -2,7 +2,7 @@ from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
-from app.data.models import Amplua
+from app.data.utils import Amplua
 
 
 class TeamToPlayer(SQLModel, table=True):

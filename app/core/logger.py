@@ -1,4 +1,4 @@
 import logging
 
 
-logger = logging.getLogger("unicorn.error")
+logger = logging.getLogger("intern")
