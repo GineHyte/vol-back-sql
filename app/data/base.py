@@ -24,7 +24,7 @@ class PlayerBase(SQLModel):
     age: Optional[int] = Field(None, description="Age")
     height: Optional[float] = Field(None, description="Height")
     weight: Optional[float] = Field(None, description="Weight")
-    image_url: Optional[str] = Field(None, description="Image URL")
+    image_path: Optional[str] = Field(None, description="Image URL")
 
 
 class TeamBase(SQLModel):

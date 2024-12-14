@@ -95,3 +95,7 @@ class TeamToPlayerPublic(SQLModel):
     team_id: Optional[int] = Field(None, foreign_key="team.id", primary_key=True)
     player_id: Optional[int] = Field(None, foreign_key="player.id", primary_key=True)
     amplua: Amplua
+
+
+class PhotoPublic(SQLModel):
+    path: str
