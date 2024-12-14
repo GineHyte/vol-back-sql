@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime
 
+from pydantic import field_validator
 from sqlmodel import Field, SQLModel
 
 from app.data.utils import Impact
@@ -32,12 +33,18 @@ class TeamBase(SQLModel):
 
 
 class GameBase(SQLModel):
-    name: str
-    description: Optional[str]
-    from_datetime: Optional[datetime]
-    to_datetime: Optional[datetime]
-    team_a_id: str = Field(..., foreign_key="team.id")
-    team_b_id: str = Field(..., foreign_key="team.id")
+    name: str = Field(..., description="Name")
+    description: Optional[str] = Field(None, description="Description")
+    from_datetime: Optional[datetime] = Field(None, description="Start datetime")
+    to_datetime: Optional[datetime] = Field(None, description="End datetime")
+    team_a: int = Field(..., foreign_key="team.id")
+    team_b: int = Field(..., foreign_key="team.id")
+
+    @field_validator("from_datetime", "to_datetime", mode="before")
+    def datetime_validator(cls, v) -> datetime:
+        if isinstance(v, datetime):
+            return v
+        return datetime.fromisoformat(v)
 
 
 class TechBase(SQLModel):

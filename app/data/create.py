@@ -2,8 +2,12 @@ from typing import List
 
 from sqlmodel import Field
 
-from app.data.base import TeamBase, PlayerBase, CoachBase
+from app.data.base import TeamBase, PlayerBase, CoachBase, GameBase
 from app.data.public import TeamToPlayerPublic
+
+
+class GameCreate(GameBase):
+    pass
 
 
 class CoachCreate(CoachBase):

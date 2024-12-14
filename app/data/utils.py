@@ -15,11 +15,6 @@ datetime_parser = AfterValidator(
 datetime_str = AfterValidator(lambda x: datetime.strftime(x, settings.DATETIME_FORMAT))
 
 
-class PlayerAmplua(SQLModel):
-    player: int
-    amplua: str
-
-
 class Status(SQLModel):
     status: Optional[str] = Field(None, description="Status")
     detail: Optional[str] = Field(None, description="Message")
