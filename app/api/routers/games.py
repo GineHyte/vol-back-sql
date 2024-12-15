@@ -57,7 +57,7 @@ async def create_game(
     session.add(game)
     session.commit()
 
-    return Status(status="ok", detail="Game created")
+    return Status(status="success", detail="Game created")
 
 
 @router.delete("/{game_id}")
@@ -69,7 +69,7 @@ async def delete_game(
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
     session.delete(game)
-    return Status(status="ok", detail="Game deleted")
+    return Status(status="success", detail="Game deleted")
 
 
 @router.put("/{game_id}")
@@ -87,4 +87,4 @@ async def update_game(
     session.add(game)
     session.commit()
 
-    return Status(status="ok", detail="Team updated")
+    return Status(status="success", detail="Team updated")

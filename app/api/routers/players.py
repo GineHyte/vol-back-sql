@@ -56,7 +56,7 @@ async def new_player(
     with Session(engine) as session:
         session.add(new_player)
         session.commit()
-    return Status(status="ok")
+    return Status(status="success")
 
 
 @router.delete("/{player_id}")
@@ -69,7 +69,7 @@ async def delete_player(
         raise HTTPException(status_code=404, detail="Player not found")
     session.delete(player)
     session.commit()
-    return Status(status="ok")
+    return Status(status="success")
 
 
 @router.put("/{player_id}")
@@ -77,17 +77,15 @@ async def update_player(
     *, session: Session = Depends(get_session), player_id: str, new_player: PlayerUpdate
 ) -> Status:
     """Update player by id"""
-    with Session(engine) as session:
-        statement = select(Player).where(Player.id == player_id)
-        player = session.exec(statement).first()
-        if player is None:
-            raise HTTPException(status_code=404, detail="Player not found")
-        else:
-            for field, value in new_player.model_dump().items():
-                if value is None:
-                    continue
-                setattr(player, field, value)
-            session.add(player)
-            session.commit()
-            session.refresh(player)
-        return Status(status="ok")
+    player = session.get(Player, player_id)
+    if player is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+    else:
+        for field, value in new_player.model_dump().items():
+            if value is None:
+                continue
+            setattr(player, field, value)
+        session.add(player)
+        session.commit()
+        session.refresh(player)
+    return Status(status="success")

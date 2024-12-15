@@ -1,5 +1,7 @@
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
+
 
 from pydantic import field_validator
 from sqlmodel import Field, SQLModel
@@ -24,7 +26,9 @@ class PlayerBase(SQLModel):
     age: Optional[int] = Field(None, description="Age")
     height: Optional[float] = Field(None, description="Height")
     weight: Optional[float] = Field(None, description="Weight")
-    image_path: Optional[str] = Field(None, description="Image URL")
+    image_file_id: Optional[UUID] = Field(
+        None, description="Image UUID file", foreign_key="file.id"
+    )
 
 
 class TeamBase(SQLModel):
@@ -87,3 +91,7 @@ class ExerciseBase(SQLModel):
     difficulty: int
     category_id: int = Field(..., foreign_key="exercisecategory.id")
     type_id: int = Field(..., foreign_key="exercisetype.id")
+
+
+class FileBase(SQLModel):
+    data: bytes = Field(..., description="File data")

@@ -1,4 +1,5 @@
 from typing import List, Optional
+from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel, Relationship
 
@@ -15,6 +16,7 @@ from app.data.base import (
     ExerciseCategoryBase,
     ExerciseTypeBase,
     ExerciseBase,
+    FileBase,
 )
 
 
@@ -70,3 +72,7 @@ class ExerciseType(ExerciseTypeBase, SQLModel, table=True):
 class Exercise(ExerciseBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
     coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+
+
+class File(FileBase, SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)

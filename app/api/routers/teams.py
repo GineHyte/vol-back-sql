@@ -64,7 +64,7 @@ async def new_team(
         session.add(relation)
     session.add(new_team)
     session.commit()
-    return Status(status="ok", detail="Team created")
+    return Status(status="success", detail="Team created")
 
 
 @router.delete("/{team_id}")
@@ -77,7 +77,7 @@ async def delete_team(
         raise HTTPException(status_code=404, detail="Team not found")
     session.delete(team)
     session.commit()
-    return Status(status="ok", detail="Team deleted")
+    return Status(status="success", detail="Team deleted")
 
 
 @router.put("/{team_id}", response_model=Status)
@@ -100,4 +100,4 @@ async def update_team(
     session.add(team)
     session.commit()
 
-    return Status(status="ok", detail="Team updated")
+    return Status(status="success", detail="Team updated")

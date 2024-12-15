@@ -1,4 +1,5 @@
 from typing import List, Optional
+from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel
 
@@ -14,6 +15,7 @@ from app.data.base import (
     ExerciseCategoryBase,
     ExerciseTypeBase,
     ExerciseBase,
+    FileBase,
 )
 
 
@@ -97,5 +99,5 @@ class TeamToPlayerPublic(SQLModel):
     amplua: Amplua
 
 
-class PhotoPublic(SQLModel):
-    path: str
+class FilePublic(FileBase):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
