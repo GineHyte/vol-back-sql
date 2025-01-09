@@ -30,7 +30,7 @@ class PlayerPublic(PlayerBase):
 
 class TeamPublic(TeamBase):
     id: Optional[int] = Field(primary_key=True, description="Team ID")
-    players: List[int] = Field(..., description="List of players IDs")
+    players: List["TeamToPlayerPublic"] = Field(..., description="List of players")
 
 
 class GamePublic(GameBase):

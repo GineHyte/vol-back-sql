@@ -41,7 +41,8 @@ async def get_team(*, session: Session = Depends(get_session), team_id: str) -> 
     players = team.players
     team.players = []
     team = TeamPublic.model_validate(team)
-    team.players = list(map(lambda x: x.id, players))
+    print(players)
+    # team.players = list(map(lambda x: x.id, players))
 
     return team
 
