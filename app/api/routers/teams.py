@@ -31,12 +31,18 @@ async def get_teams(*, session: Session = Depends(get_session)) -> Page[TeamPubl
     return paginate(teams)
 
 
-@router.get("/{team_id}")
-async def get_team(*, session: Session = Depends(get_session), team_id: str) -> Team:
+@router.get("/{team_id}", response_model=TeamPublic)
+async def get_team(*, session: Session = Depends(get_session), team_id: str) -> TeamPublic:
     """Get team by id"""
     team = session.get(Team, team_id)
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
+        
+    players = team.players
+    team.players = []
+    team = TeamPublic.model_validate(team)
+    team.players = list(map(lambda x: x.id, players))
+
     return team
 
 

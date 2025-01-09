@@ -16,8 +16,8 @@ router = APIRouter()
 
 
 @router.get("/", response_model=Page[PlayerPublic])
-async def get_player(*, session: Session = Depends(get_session)) -> Page[PlayerPublic]:
-    """Get all teams"""
+async def get_players(*, session: Session = Depends(get_session)) -> Page[PlayerPublic]:
+    """Get all players"""
     db_players = session.exec(select(Player)).all()
     players = []
     for db_player in db_players:
@@ -26,7 +26,6 @@ async def get_player(*, session: Session = Depends(get_session)) -> Page[PlayerP
         player = PlayerPublic.model_validate(db_player)
         player.teams = list(map(lambda x: x.id, teams))
         players.append(player)
-    logger.info(players)
     return paginate(players)
 
 
