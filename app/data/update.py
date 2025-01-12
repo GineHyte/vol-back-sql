@@ -2,7 +2,14 @@ from typing import List, Optional
 
 from sqlmodel import Field
 
-from app.data.base import TeamBase, PlayerBase, GameBase, CoachBase
+from app.data.base import (
+    TeamBase,
+    PlayerBase,
+    GameBase,
+    CoachBase,
+    ActionBase,
+    TechBase,
+)
 from app.data.public import TeamToPlayerPublic
 
 
@@ -31,3 +38,12 @@ class TeamUpdate(TeamBase):
     players: Optional[List[TeamToPlayerPublic]] = Field(
         None, description="List of jsons {player: int, amplua: str}"
     )
+
+
+class ActionUpdate(ActionBase):
+    pass
+
+
+class TechUpdate(TechBase):
+    name: Optional[str] = Field(None, description="Name")
+    description: Optional[str] = Field(None, description="Description")

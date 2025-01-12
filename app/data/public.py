@@ -5,6 +5,7 @@ from sqlmodel import Field, SQLModel
 
 from app.data.utils import Impact, Amplua
 from app.data.base import (
+    TeamToPlayerBase,
     CoachBase,
     PlayerBase,
     TeamBase,
@@ -25,12 +26,16 @@ class CoachPublic(CoachBase):
 
 class PlayerPublic(PlayerBase):
     id: Optional[int] = Field(None, description="Player ID")
-    teams: Optional[List[int]] = Field(None, description="List of teams IDs")
+    teams: Optional[List["TeamToPlayerPublic"]] = Field(
+        None, description="List of TeamToPlayer relations"
+    )
 
 
 class TeamPublic(TeamBase):
     id: Optional[int] = Field(primary_key=True, description="Team ID")
-    players: List["TeamToPlayerPublic"] = Field(..., description="List of players")
+    players: List["TeamToPlayerPublic"] = Field(
+        ..., description="List of TeamToPlayer relations"
+    )
 
 
 class GamePublic(GameBase):
@@ -93,10 +98,8 @@ class ExercisePublic(ExerciseBase):
     type_id: int = Field(..., foreign_key="exercisetype.id")
 
 
-class TeamToPlayerPublic(SQLModel):
-    team_id: Optional[int] = Field(None, foreign_key="team.id", primary_key=True)
-    player_id: Optional[int] = Field(None, foreign_key="player.id", primary_key=True)
-    amplua: Amplua
+class TeamToPlayerPublic(TeamToPlayerBase):
+    pass
 
 
 class FilePublic(FileBase):

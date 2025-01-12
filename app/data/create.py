@@ -1,8 +1,18 @@
-from typing import List
+from typing import List, Optional
 
 from sqlmodel import Field
 
-from app.data.base import TeamBase, PlayerBase, CoachBase, GameBase, FileBase
+from app.data.base import (
+    TeamBase,
+    PlayerBase,
+    CoachBase,
+    GameBase,
+    FileBase,
+    TeamToPlayerBase,
+    ActionBase,
+    TechBase,
+    SubtechBase,
+)
 from app.data.public import TeamToPlayerPublic
 
 
@@ -19,10 +29,27 @@ class PlayerCreate(PlayerBase):
 
 
 class TeamCreate(TeamBase):
-    players: List[TeamToPlayerPublic] = Field(
+    players: List["TeamToPlayerCreate"] = Field(
         ..., description="List of jsons {player_id: int, team_id: int, amplua: str}"
     )
 
 
+class TeamToPlayerCreate(TeamToPlayerBase):
+    team_id: Optional[int] = Field(None, foreign_key="team.id")
+    player_id: Optional[int] = Field(None, foreign_key="player.id")
+
+
 class FileCreate(FileBase):
+    pass
+
+
+class ActionCreate(ActionBase):
+    pass
+
+
+class TechCreate(TechBase):
+    pass
+
+
+class SubtechCreate(SubtechBase):
     pass

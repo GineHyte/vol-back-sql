@@ -25,7 +25,7 @@ async def get_games(*, session: Session = Depends(get_session)) -> Page[GamePubl
 @router.get("/{game_id}")
 async def get_game(*, session: Session = Depends(get_session), game_id: str) -> Game:
     """Get game by id"""
-    game = session.get(Team, game_id)
+    game = session.get(Game, game_id)
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
     return game
@@ -37,8 +37,10 @@ async def create_game(
 ) -> Status:
     """Create new game"""
     game = Game(**new_game.model_dump(exclude={"team_a", "team_b"}))
-    if game.from_datetime > game.to_datetime:
-        raise HTTPException(status_code=400, detail="Incorrect datetime")
+
+    if game.from_datetime and game.to_datetime:
+        if game.from_datetime > game.to_datetime:
+            raise HTTPException(status_code=400, detail="Incorrect datetime")
 
     team_a = session.get(Team, new_game.team_a)
     team_b = session.get(Team, new_game.team_b)
@@ -51,8 +53,8 @@ async def create_game(
     if team_a == team_b:
         raise HTTPException(status_code=400, detail="Teams cannot be the same")
 
-    game.team_a = team_a
-    game.team_b = team_b
+    game.team_a = team_a.id
+    game.team_b = team_b.id
 
     session.add(game)
     session.commit()
@@ -69,6 +71,7 @@ async def delete_game(
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
     session.delete(game)
+    session.commit()
     return Status(status="success", detail="Game deleted")
 
 

@@ -3,8 +3,7 @@ from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel, Relationship
 
-from app.data.utils import Impact
-from app.data.relations import TeamToPlayer
+from app.data.utils import Impact, Amplua
 from app.data.base import (
     CoachBase,
     PlayerBase,
@@ -17,25 +16,35 @@ from app.data.base import (
     ExerciseTypeBase,
     ExerciseBase,
     FileBase,
+    TeamToPlayerBase,
 )
+
+
+class TeamToPlayer(TeamToPlayerBase, SQLModel, table=True):
+    team_id: int = Field(None, foreign_key="team.id", primary_key=True)
+    player_id: int = Field(None, foreign_key="player.id", primary_key=True)
+    amplua: Amplua
+
+    team: "Team" = Relationship(back_populates="players")
+    player: "Player" = Relationship(back_populates="teams")
 
 
 class Coach(CoachBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
 
 
-class Player(PlayerBase, table=True):
+class Player(PlayerBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
-    teams: List["Team"] = Relationship(
-        back_populates="players", link_model=TeamToPlayer
+    teams: List[TeamToPlayer] = Relationship(
+        back_populates="player", cascade_delete=True
     )
     coach_id: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class Team(TeamBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
-    players: List[Player] = Relationship(
-        back_populates="teams", link_model=TeamToPlayer
+    players: List[TeamToPlayer] = Relationship(
+        back_populates="team", cascade_delete=True
     )
 
 

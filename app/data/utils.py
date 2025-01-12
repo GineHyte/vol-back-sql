@@ -22,7 +22,7 @@ class Status(SQLModel):
 
 class Amplua(Enum):
     DEFENDER = "Defender"
-    ATACKER = "Atacker"
+    ATTACKER = "Attacker"
     UNIVERSAL = "Universal"
 
 

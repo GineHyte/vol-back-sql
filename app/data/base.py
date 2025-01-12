@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import field_validator
 from sqlmodel import Field, SQLModel
 
-from app.data.utils import Impact
+from app.data.utils import Impact, Amplua
 
 
 class CoachBase(SQLModel):
@@ -45,7 +45,9 @@ class GameBase(SQLModel):
     team_b: int = Field(..., foreign_key="team.id")
 
     @field_validator("from_datetime", "to_datetime", mode="before")
-    def datetime_validator(cls, v) -> datetime:
+    def datetime_validator(cls, v) -> Optional[datetime]:
+        if v is None:
+            return None
         if isinstance(v, datetime):
             return v
         return datetime.fromisoformat(v)
@@ -95,3 +97,9 @@ class ExerciseBase(SQLModel):
 
 class FileBase(SQLModel):
     data: bytes = Field(..., description="File data")
+
+
+class TeamToPlayerBase(SQLModel):
+    team_id: int = Field(..., foreign_key="team.id")
+    player_id: int = Field(..., foreign_key="player.id")
+    amplua: Amplua

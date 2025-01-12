@@ -19,14 +19,7 @@ router = APIRouter()
 async def get_players(*, session: Session = Depends(get_session)) -> Page[PlayerPublic]:
     """Get all players"""
     db_players = session.exec(select(Player)).all()
-    players = []
-    for db_player in db_players:
-        teams = db_player.teams
-        db_player.teams = []
-        player = PlayerPublic.model_validate(db_player)
-        player.teams = list(map(lambda x: x.id, teams))
-        players.append(player)
-    return paginate(players)
+    return paginate(db_players)
 
 
 @router.get("/{player_id}", response_model=PlayerPublic)
@@ -38,12 +31,7 @@ async def get_player(
     if db_player is None:
         raise HTTPException(status_code=404, detail="Player not found")
 
-    teams = db_player.teams
-    db_player.teams = []
-    player = PlayerPublic.model_validate(db_player)
-    player.teams = list(map(lambda x: x.id, teams))
-
-    return player
+    return db_player
 
 
 @router.post("/")
