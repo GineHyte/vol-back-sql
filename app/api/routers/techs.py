@@ -1,16 +1,13 @@
-from typing import List
-
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import Page, paginate
-from sqlmodel import select, Session, delete, col
+from sqlmodel import select, Session
 
-from app.core.db import engine, get_session
-from app.data.db import Team, Game, Tech, Player, Subtech, Action
+from app.core.db import get_session
+from app.data.db import Tech
 from app.data.utils import Status
 from app.data.update import TechUpdate
 from app.data.create import TechCreate
-from app.data.public import TechPublic
-from app.core.logger import logger
+from app.data.public import TechPublic  
 
 
 router = APIRouter()
@@ -22,8 +19,8 @@ async def get_techs(*, session: Session = Depends(get_session)) -> Page[TechPubl
     return paginate(session.exec(select(Tech)).all())
 
 
-@router.get("/{tech_id}")
-async def get_tech(*, session: Session = Depends(get_session), tech_id: str) -> Tech:
+@router.get("/{tech_id}", response_model=TechPublic)
+async def get_tech(*, session: Session = Depends(get_session), tech_id: str) -> TechPublic:
     """Get tech by id"""
     db_tech = session.get(Tech, tech_id)
     if not db_tech:
@@ -36,7 +33,7 @@ async def create_tech(
     *, session: Session = Depends(get_session), new_tech: TechCreate
 ) -> Status:
     """Create new tech"""
-    tech = Tech(**new_tech.model_dump(exclude={"team", "player", "subtech"}))
+    tech = Tech(**new_tech.model_dump())
     session.add(tech)
     session.commit()
     return Status(status="success", detail="Tech created")

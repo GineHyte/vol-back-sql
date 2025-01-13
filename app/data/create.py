@@ -12,6 +12,9 @@ from app.data.base import (
     ActionBase,
     TechBase,
     SubtechBase,
+    ExerciseBase,
+    ExerciseCategoryBase,
+    ExerciseTypeBase,
 )
 from app.data.public import TeamToPlayerPublic
 
@@ -53,3 +56,16 @@ class TechCreate(TechBase):
 
 class SubtechCreate(SubtechBase):
     pass
+
+
+class ExerciseCreate(ExerciseBase):
+    pass
+
+
+class ExerciseCategoryCreate(ExerciseCategoryBase):
+    pass
+
+
+class ExerciseTypeCreate(ExerciseTypeBase):
+    pass
+

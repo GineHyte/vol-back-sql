@@ -9,6 +9,10 @@ from app.data.base import (
     CoachBase,
     ActionBase,
     TechBase,
+    SubtechBase,
+    ExerciseBase,
+    ExerciseCategoryBase,
+    ExerciseTypeBase,
 )
 from app.data.public import TeamToPlayerPublic
 
@@ -45,5 +49,21 @@ class ActionUpdate(ActionBase):
 
 
 class TechUpdate(TechBase):
-    name: Optional[str] = Field(None, description="Name")
-    description: Optional[str] = Field(None, description="Description")
+    pass
+
+
+class SubtechUpdate(SubtechBase):
+    pass
+
+
+class ExerciseUpdate(ExerciseBase):
+    pass
+
+
+class ExerciseCategoryUpdate(ExerciseCategoryBase):
+    pass
+
+
+class ExerciseTypeUpdate(ExerciseTypeBase):
+    pass
+
