@@ -45,7 +45,10 @@ async def create_action(
     *, session: Session = Depends(get_session), new_action: ActionCreate
 ) -> Status:
     """Create new action"""
-    action = Action(**new_action.model_dump(exclude={"team", "player", "subtech"}))
+    action = Action(**new_action.model_dump())
+
+    session.add(action)
+    session.commit()
 
     return Status(status="success", detail="Action created")
 

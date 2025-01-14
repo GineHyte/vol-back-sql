@@ -27,5 +27,7 @@ class Amplua(Enum):
 
 
 class Impact(Enum):
-    EFFEIENCY = "Effeiency"
-    MISTAKE = "Mistake"
+    EFFEIENCY = "Efficiency"
+    MISTAKE = "Mistake"  # just a mistake
+    SCORE = "Score"
+    FAIL = "Fail"  # - score
