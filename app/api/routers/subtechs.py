@@ -45,7 +45,7 @@ async def create_subtech(
     return Status(status="success", detail="Subtech created")
 
 
-@router.delete("/{tech_id}")
+@router.delete("/{subtech_id}")
 async def delete_subtech(
     *, session: Session = Depends(get_session), subtech_id: str
 ) -> Status:
