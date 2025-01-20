@@ -4,20 +4,7 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, SQLModel, Relationship
 
 from app.data.utils import Impact, Amplua
-from app.data.base import (
-    CoachBase,
-    PlayerBase,
-    TeamBase,
-    GameBase,
-    TechBase,
-    SubtechBase,
-    ActionBase,
-    ExerciseCategoryBase,
-    ExerciseTypeBase,
-    ExerciseBase,
-    FileBase,
-    TeamToPlayerBase,
-)
+from app.data.base import *
 
 
 class TeamToPlayer(TeamToPlayerBase, SQLModel, table=True):
@@ -85,3 +72,7 @@ class Exercise(ExerciseBase, SQLModel, table=True):
 
 class File(FileBase, SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+
+class Update(UpdateBase, SQLModel, table=True):
+    name: str = Field(..., primary_key=True)

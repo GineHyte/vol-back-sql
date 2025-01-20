@@ -4,20 +4,7 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, SQLModel
 
 from app.data.utils import Impact, Amplua
-from app.data.base import (
-    TeamToPlayerBase,
-    CoachBase,
-    PlayerBase,
-    TeamBase,
-    GameBase,
-    TechBase,
-    SubtechBase,
-    ActionBase,
-    ExerciseCategoryBase,
-    ExerciseTypeBase,
-    ExerciseBase,
-    FileBase,
-)
+from app.data.base import *
 
 
 class CoachPublic(CoachBase):
@@ -104,3 +91,7 @@ class TeamToPlayerPublic(TeamToPlayerBase):
 
 class FilePublic(FileBase):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+
+class UpdatePublic(UpdateBase):
+    name: str = Field(..., primary_key=True)

@@ -103,3 +103,9 @@ class TeamToPlayerBase(SQLModel):
     team_id: int = Field(..., foreign_key="team.id")
     player_id: int = Field(..., foreign_key="player.id")
     amplua: Amplua
+
+
+class UpdateBase(SQLModel):
+    url: str
+    notes: str
+    pub_date: datetime

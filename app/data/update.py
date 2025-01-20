@@ -2,18 +2,7 @@ from typing import List, Optional
 
 from sqlmodel import Field
 
-from app.data.base import (
-    TeamBase,
-    PlayerBase,
-    GameBase,
-    CoachBase,
-    ActionBase,
-    TechBase,
-    SubtechBase,
-    ExerciseBase,
-    ExerciseCategoryBase,
-    ExerciseTypeBase,
-)
+from app.data.base import *
 from app.data.public import TeamToPlayerPublic
 
 
@@ -67,3 +56,6 @@ class ExerciseCategoryUpdate(ExerciseCategoryBase):
 class ExerciseTypeUpdate(ExerciseTypeBase):
     pass
 
+
+class UpdateUpdate(UpdateBase):
+    pass
