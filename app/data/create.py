@@ -49,13 +49,5 @@ class ExerciseCreate(ExerciseBase):
     pass
 
 
-class ExerciseCategoryCreate(ExerciseCategoryBase):
-    pass
-
-
-class ExerciseTypeCreate(ExerciseTypeBase):
-    pass
-
-
 class UpdateCreate(UpdateBase):
     pass

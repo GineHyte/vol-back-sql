@@ -55,16 +55,6 @@ class Action(ActionBase, SQLModel, table=True):
     coach_id: Optional[int] = Field(None, foreign_key="coach.id")
 
 
-class ExerciseCategory(ExerciseCategoryBase, SQLModel, table=True):
-    id: Optional[int] = Field(primary_key=True)
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
-
-
-class ExerciseType(ExerciseTypeBase, SQLModel, table=True):
-    id: Optional[int] = Field(primary_key=True)
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
-
-
 class Exercise(ExerciseBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
     coach_id: Optional[int] = Field(None, foreign_key="coach.id")

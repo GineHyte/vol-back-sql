@@ -58,19 +58,6 @@ class ActionPublic(ActionBase):
     impact: Impact
 
 
-class ExerciseCategoryPublic(ExerciseCategoryBase):
-    id: Optional[int] = Field(primary_key=True)
-    name: str
-    description: Optional[str]
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
-
-
-class ExerciseTypePublic(ExerciseTypeBase):
-    id: Optional[int] = Field(primary_key=True)
-    name: str
-    description: Optional[str]
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
-
 
 class ExercisePublic(ExerciseBase):
     id: Optional[int] = Field(primary_key=True)

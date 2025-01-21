@@ -62,6 +62,7 @@ class SubtechBase(SQLModel):
     tech_id: int = Field(..., foreign_key="tech.id")
     name: str
     description: Optional[str]
+    difficulty: int = Field(..., description="Difficulty", ge=1, le=3)
 
 
 class ActionBase(SQLModel):
@@ -74,15 +75,6 @@ class ActionBase(SQLModel):
     impact: Impact
 
 
-class ExerciseCategoryBase(SQLModel):
-    name: str
-    description: Optional[str]
-
-
-class ExerciseTypeBase(SQLModel):
-    name: str
-    description: Optional[str]
-
 
 class ExerciseBase(SQLModel):
     name: str
@@ -91,9 +83,17 @@ class ExerciseBase(SQLModel):
     image_url: Optional[str]
     video_url: Optional[str]
     difficulty: int
-    category_id: int = Field(..., foreign_key="exercisecategory.id")
-    type_id: int = Field(..., foreign_key="exercisetype.id")
-
+    exercises_for_learning: bool = Field(False)
+    exercises_for_consolidation: bool = Field(False)
+    exercises_for_improvement: bool = Field(False)
+    simulation_exercises: bool = Field(False)
+    exercises_with_the_ball_on_your_own: bool = Field(False)
+    exercises_with_the_ball_in_pairs: bool = Field(False)
+    exercises_with_the_ball_in_groups: bool = Field(False)
+    exercises_in_difficult_conditions: bool = Field(False)
+    from_zone: int
+    to_zone: int
+    time_per_exercise: int
 
 class FileBase(SQLModel):
     data: bytes = Field(..., description="File data")

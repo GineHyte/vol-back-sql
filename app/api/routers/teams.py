@@ -48,6 +48,10 @@ async def new_team(
     ) + 1
     logger.debug("creating new team with id %s", new_id)
     player_ids = list(map(lambda x: x.player_id, team.players))
+    
+    if len(set(player_ids)) != len(player_ids):
+        raise HTTPException(status_code=404, detail="Players must be unique")
+    
     player_ampluas = list(map(lambda x: x.amplua, team.players))
     statement = select(Player).where(Player.id.in_(player_ids))
     players: List[Player] = session.exec(statement).all()

@@ -16,58 +16,58 @@ from app.core.logger import logger
 router = APIRouter()
 
 
-@router.get("/", response_model=Page[Subtech])
-async def get_subtechs(*, session: Session = Depends(get_session), tech_id: str) -> Page[Subtech]:
-    """Get all subtechs"""
-    return paginate(session.exec(select(Subtech).where(Subtech.tech_id == tech_id)).all())
+@router.get("/", response_model=Page[Exercise])
+async def get_exercises(*, session: Session = Depends(get_session)) -> Page[Exercise]:
+    """Get all exercises"""
+    return paginate(session.exec(select(Exercise)).all())
 
 
-@router.get("/{subtech_id}")
-async def get_subtech(*, session: Session = Depends(get_session), subtech_id: str) -> Subtech:
-    """Get subtech by id"""
-    db_subtech = session.get(Subtech, subtech_id)
-    if not db_subtech:
-        raise HTTPException(status_code=404, detail="Subtech not found")
-    return db_subtech
+@router.get("/{exercise_id}")
+async def get_exercise(*, session: Session = Depends(get_session), exercise_id: str) -> Exercise:
+    """Get exercise by id"""
+    db_exercise = session.get(Exercise, exercise_id)
+    if not db_exercise:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+    return db_exercise
 
 
 @router.post("/", response_model=Status)
-async def create_subtech(
-    *, session: Session = Depends(get_session), new_subtech: SubtechCreate
+async def create_exercise(
+    *, session: Session = Depends(get_session), new_exercise: ExerciseCreate
 ) -> Status:
-    """Create new subtech"""
-    subtech = Subtech(**new_subtech.model_dump())
-    session.add(subtech)
+    """Create new exercise"""
+    exercise = Exercise(**new_exercise.model_dump())
+    session.add(exercise)
     session.commit()
-    return Status(status="success", detail="Subtech created")
+    return Status(status="success", detail="Exercise created")
 
 
 @router.delete("/{tech_id}")
-async def delete_subtech(
-    *, session: Session = Depends(get_session), subtech_id: str
+async def delete_exercise(
+    *, session: Session = Depends(get_session), exercise_id: str
 ) -> Status:
-    """Delete subtech by id"""
-    subtech = session.get(Subtech, subtech_id)
-    if subtech is None:
-        raise HTTPException(status_code=404, detail="Subtech not found")
-    session.delete(subtech)
+    """Delete exercise by id"""
+    exercise = session.get(Exercise, exercise_id)
+    if exercise is None:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+    session.delete(exercise)
     session.commit()
-    return Status(status="success", detail="Subtech deleted")
+    return Status(status="success", detail="Exercise deleted")
 
 
 @router.put("/{tech_id}")
-async def update_subtech(
-    *, session: Session = Depends(get_session), subtech_id: str, new_subtech: SubtechUpdate
+async def update_exercise(
+    *, session: Session = Depends(get_session), exercise_id: str, new_exercise: ExerciseUpdate
 ) -> Status:
-    """Update subtech by id"""
-    subtech = session.get(Subtech, subtech_id)
-    if subtech is None:
-        raise HTTPException(status_code=404, detail="Subtech not found")
+    """Update exercise by id"""
+    exercise = session.get(Exercise, exercise_id)
+    if exercise is None:
+        raise HTTPException(status_code=404, detail="Exercise not found")
 
-    for field, value in new_subtech.model_dump(exclude_none=True).items():
-        setattr(subtech, field, value)
+    for field, value in new_exercise.model_dump(exclude_none=True).items():
+        setattr(exercise, field, value)
 
-    session.add(subtech)
+    session.add(exercise)
     session.commit()
 
-    return Status(status="success", detail="Subtech updated")
+    return Status(status="success", detail="Exercise updated")

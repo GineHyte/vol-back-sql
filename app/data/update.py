@@ -49,13 +49,5 @@ class ExerciseUpdate(ExerciseBase):
     pass
 
 
-class ExerciseCategoryUpdate(ExerciseCategoryBase):
-    pass
-
-
-class ExerciseTypeUpdate(ExerciseTypeBase):
-    pass
-
-
 class UpdateUpdate(UpdateBase):
     pass

@@ -2,10 +2,10 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import Page, paginate
-from sqlmodel import select, Session, delete, col
+from sqlmodel import select, Session, delete, col, or_
 
 from app.core.db import engine, get_session
-from app.data.db import Team, Game
+from app.data.db import Team, Game, Player
 from app.data.utils import Status
 from app.data.update import GameUpdate
 from app.data.create import GameCreate
@@ -17,8 +17,17 @@ router = APIRouter()
 
 
 @router.get("/", response_model=Page[GamePublic])
-async def get_games(*, session: Session = Depends(get_session)) -> Page[GamePublic]:
+async def get_games(*, session: Session = Depends(get_session), player_id: int = None, team_id: int = None) -> Page[GamePublic]:
     """Get all games"""
+    if player_id:
+        games = []
+        player = session.get(Player, player_id)
+        for team_to_player in player.teams:
+            game = session.exec(select(Game).where(or_(Game.team_a == team_to_player.team_id, Game.team_b == team_to_player.team_id))).first()
+            if game: games.append(game)
+        return paginate(games)
+    if team_id:
+        return paginate(session.exec(select(Game).where(or_(Game.team_a == team_id, Game.team_b == team_id))).all())
     return paginate(session.exec(select(Game)).all())
 
 
