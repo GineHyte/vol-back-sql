@@ -80,8 +80,8 @@ class ExerciseBase(SQLModel):
     name: str
     description: Optional[str]
     subtech_id: int = Field(..., foreign_key="subtech.id")
-    image_url: Optional[str]
-    video_url: Optional[str]
+    image_url: Optional[str] = Field(None, description="Image URL")
+    video_url: Optional[str] = Field(None, description="Video URL")
     difficulty: int
     exercises_for_learning: bool = Field(False)
     exercises_for_consolidation: bool = Field(False)
@@ -91,8 +91,8 @@ class ExerciseBase(SQLModel):
     exercises_with_the_ball_in_pairs: bool = Field(False)
     exercises_with_the_ball_in_groups: bool = Field(False)
     exercises_in_difficult_conditions: bool = Field(False)
-    from_zone: int
-    to_zone: int
+    from_zone: Optional[int] = Field(None)
+    to_zone: Optional[int] = Field(None)
     time_per_exercise: int
 
 class FileBase(SQLModel):
