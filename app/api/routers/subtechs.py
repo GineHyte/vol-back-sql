@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import Page, paginate
 from sqlmodel import select, Session
@@ -15,12 +17,15 @@ router = APIRouter()
 
 @router.get("/", response_model=Page[SubtechPublic])
 async def get_subtechs(
-    *, session: Session = Depends(get_session), tech_id: str
+    *, session: Session = Depends(get_session), tech_id: Optional[str] = None
 ) -> Page[SubtechPublic]:
     """Get all subtechs"""
-    return paginate(
-        session.exec(select(Subtech).where(Subtech.tech_id == tech_id)).all()
-    )
+    if tech_id:
+        return paginate(
+            session.exec(select(Subtech).where(Subtech.tech_id == tech_id)).all()
+        )
+
+    return paginate(session.exec(select(Subtech)).all())
 
 
 @router.get("/{subtech_id}")
