@@ -12,6 +12,8 @@ from app.data.public import FilePublic
 from app.core.db import get_session
 from app.core.logger import logger
 
+from app.api.routers import algorithm
+
 router = APIRouter()
 
 
@@ -35,3 +37,10 @@ def create_file(*, session: Session = Depends(get_session), file: FileCreate) ->
     session.add(new_file)
     session.commit()
     return Status(status="success", detail=str(new_file.id))
+
+
+@router.get("/test/{player_id}")
+async def test(player_id: int):
+    logger.info("Test")
+    await algorithm.calculate_sums(player_id)
+    return {"status": "ok"}

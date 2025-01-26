@@ -66,3 +66,5 @@ class File(FileBase, SQLModel, table=True):
 
 class Update(UpdateBase, SQLModel, table=True):
     name: str = Field(..., primary_key=True)
+
+
