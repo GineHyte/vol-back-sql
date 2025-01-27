@@ -40,7 +40,7 @@ def create_file(*, session: Session = Depends(get_session), file: FileCreate) ->
 
 
 @router.get("/test/{player_id}")
-async def test(player_id: int):
+async def test(*, session: Session = Depends(get_session), player_id: int):
     logger.info("Test")
-    await algorithm.calculate_sums(player_id)
+    await algorithm.block4(session, player_id)
     return {"status": "ok"}
