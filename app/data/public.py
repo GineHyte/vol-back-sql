@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel
 
-from app.data.utils import Impact, Amplua
+from app.data.utils import Impact, Amplua, NameWithId
 from app.data.base import *
 
 
@@ -19,61 +19,42 @@ class PlayerPublic(PlayerBase):
 
 
 class TeamPublic(TeamBase):
-    id: Optional[int] = Field(primary_key=True, description="Team ID")
+    id: int = Field(primary_key=True, description="Team ID")
     players: List["TeamToPlayerPublic"] = Field(
         ..., description="List of TeamToPlayer relations"
     )
 
 
 class GamePublic(GameBase):
-    id: Optional[int] = Field(primary_key=True)
-    team_a_score: int = Field(0)
-    team_b_score: int = Field(0)
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
-
+    id: int = Field(None, description="Game ID")
+    team_a: NameWithId
+    team_b: NameWithId
 
 class TechPublic(TechBase):
-    id: Optional[int] = Field(primary_key=True)
-    name: str
-    description: Optional[str]
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
-
+    id: int = Field(None, description="Tech ID")
+    pass
 
 class SubtechPublic(SubtechBase):
-    id: Optional[int] = Field(primary_key=True)
-    tech_id: int = Field(..., foreign_key="tech.id")
-    name: str
-    description: Optional[str]
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
-
+    id: int = Field(None, description="Subtech ID")
+    tech: NameWithId
 
 class ActionPublic(ActionBase):
-    id: Optional[int] = Field(primary_key=True)
-    game: int = Field(..., foreign_key="game.id")
-    team: int = Field(..., foreign_key="team.id")
-    player: int = Field(..., foreign_key="player.id")
-    subtech: int = Field(..., foreign_key="subtech.id")
-    from_zone: int
-    to_zone: int
-    impact: Impact
-
+    id: int = Field(None, description="Action ID")
+    game: NameWithId
+    team: NameWithId
+    player: NameWithId
+    subtech: NameWithId
 
 
 class ExercisePublic(ExerciseBase):
-    id: Optional[int] = Field(primary_key=True)
-    name: str
-    description: Optional[str]
-    subtech_id: int = Field(..., foreign_key="subtech.id")
-    coach_id: int = Field(..., foreign_key="coach.id")
-    image_url: Optional[str]
-    video_url: Optional[str]
-    difficulty: int
-    category_id: int = Field(..., foreign_key="exercisecategory.id")
-    type_id: int = Field(..., foreign_key="exercisetype.id")
+    id: int = Field(None, description="Exercise ID")
+    subtech: NameWithId
+    tech: NameWithId
 
 
 class TeamToPlayerPublic(TeamToPlayerBase):
-    pass
+    team: NameWithId
+    player: NameWithId 
 
 
 class FilePublic(FileBase):

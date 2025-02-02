@@ -22,7 +22,7 @@ async def get_subtechs(
     """Get all subtechs"""
     if tech_id:
         return paginate(
-            session.exec(select(Subtech).where(Subtech.tech_id == tech_id)).all()
+            session.exec(select(Subtech).where(Subtech.tech == tech_id)).all()
         )
 
     return paginate(session.exec(select(Subtech)).all())

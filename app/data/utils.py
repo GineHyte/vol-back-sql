@@ -31,3 +31,8 @@ class Impact(Enum):
     MISTAKE = "Mistake"  # just a mistake
     SCORE = "Score"
     FAIL = "Fail"  # - score
+
+
+class NameWithId(SQLModel):
+    id: int
+    name: str

@@ -21,7 +21,7 @@ async def calculate_sums(session: Session, player_id: int):
         logger.debug(player_sum)
         player_sum.sum_actions += 1
         
-        tech_id = session.get(Subtech, action.subtech).tech_id
+        tech_id = session.get(Subtech, action.subtech).tech
         zone_id = str(action.from_zone) + "-" + str(action.to_zone)
 
         tech_sum = session.get(TechSum, (player_id, tech_id))

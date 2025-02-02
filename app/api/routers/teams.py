@@ -93,7 +93,7 @@ async def update_team(
     new_team_data["players"] = []
 
     for player in new_team.players:
-        new_team_data["players"].append(session.get(Player, player.player_id))
+        new_team_data["players"].append(session.get(Player, player.player))
 
     team.sqlmodel_update(new_team_data)
 

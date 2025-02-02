@@ -26,14 +26,14 @@ class PlayerBase(SQLModel):
     age: Optional[int] = Field(None, description="Age")
     height: Optional[float] = Field(None, description="Height")
     weight: Optional[float] = Field(None, description="Weight")
-    image_file_id: Optional[UUID] = Field(
+    image_file: Optional[UUID] = Field(
         None, description="Image UUID file", foreign_key="file.id"
     )
 
 
 class TeamBase(SQLModel):
     name: str
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+    coach: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class GameBase(SQLModel):
@@ -59,7 +59,7 @@ class TechBase(SQLModel):
 
 
 class SubtechBase(SQLModel):
-    tech_id: int = Field(..., foreign_key="tech.id")
+    tech: int = Field(..., foreign_key="tech.id")
     name: str
     description: Optional[str]
     difficulty: int = Field(..., description="Difficulty", ge=1, le=3)
@@ -75,11 +75,11 @@ class ActionBase(SQLModel):
     impact: Impact
 
 
-
 class ExerciseBase(SQLModel):
     name: str
     description: Optional[str]
-    subtech_id: int = Field(..., foreign_key="subtech.id")
+    tech: int = Field(..., foreign_key="tech.id")
+    subtech: int = Field(..., foreign_key="subtech.id")
     image_url: Optional[str] = Field(None, description="Image URL")
     video_url: Optional[str] = Field(None, description="Video URL")
     difficulty: int
@@ -95,13 +95,14 @@ class ExerciseBase(SQLModel):
     to_zone: Optional[int] = Field(None)
     time_per_exercise: int
 
+
 class FileBase(SQLModel):
     data: bytes = Field(..., description="File data")
 
 
 class TeamToPlayerBase(SQLModel):
-    team_id: int = Field(..., foreign_key="team.id")
-    player_id: int = Field(..., foreign_key="player.id")
+    team: int = Field(..., foreign_key="team.id")
+    player: int = Field(..., foreign_key="player.id")
     amplua: Amplua
 
 
