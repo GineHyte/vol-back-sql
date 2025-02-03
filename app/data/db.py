@@ -25,7 +25,7 @@ class Player(PlayerBase, SQLModel, table=True):
     teams: List[TeamToPlayer] = Relationship(
         back_populates="player", cascade_delete=True
     )
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+    coach: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class Team(TeamBase, SQLModel, table=True):
@@ -37,27 +37,27 @@ class Team(TeamBase, SQLModel, table=True):
 
 class Game(GameBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+    coach: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class Tech(TechBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+    coach: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class Subtech(SubtechBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+    coach: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class Action(ActionBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+    coach: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class Exercise(ExerciseBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
-    coach_id: Optional[int] = Field(None, foreign_key="coach.id")
+    coach: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class File(FileBase, SQLModel, table=True):

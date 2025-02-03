@@ -7,7 +7,8 @@ from app.data.db import Player
 from app.data.utils import Status
 from app.data.create import PlayerCreate
 from app.data.update import PlayerUpdate
-from app.data.public import PlayerPublic
+from app.data.public import PlayerPublic, TeamToPlayerPublic
+from app.data.utils import NameWithId
 
 from app.core.db import get_session
 from app.core.logger import logger
@@ -17,21 +18,50 @@ router = APIRouter()
 
 @router.get("/", response_model=Page[PlayerPublic])
 async def get_players(*, session: Session = Depends(get_session)) -> Page[PlayerPublic]:
-    """Get all players"""
+    """Get all players
+    
+    Returns: 
+        Page[PlayerPublic]: list of players
+        player.teams: list of teams where player played (see NameWithId and TeamToPlayerPublic)
+    """
     db_players = session.exec(select(Player)).all()
-    return paginate(db_players)
+    players = []
+    for t_player in db_players:
+        player = PlayerPublic(**t_player.model_dump(exclude={"teams"}))
+        player.teams = []
+        for t_team_player in t_player.teams:
+            team_player_player = NameWithId(id=t_team_player.player.id, name=t_team_player.player.first_name)
+            team_player_team = NameWithId(id=t_team_player.team.id, name=t_team_player.team.name)
+            team_player = TeamToPlayerPublic(player=team_player_player, team=team_player_team, amplua=t_team_player.amplua)
+            player.teams.append(team_player)
+        players.append(player)
+    return paginate(players)
 
 
 @router.get("/{player_id}", response_model=PlayerPublic)
 async def get_player(
     *, session: Session = Depends(get_session), player_id: str
 ) -> PlayerPublic:
-    """Get player by id"""
+    """Get player by id
+    
+    Returns: 
+        PlayerPublic: player
+        player.teams: list of teams where player played (see NameWithId and TeamToPlayerPublic)
+    """
     db_player = session.get(Player, player_id)
+
     if db_player is None:
         raise HTTPException(status_code=404, detail="Player not found")
 
-    return db_player
+    player = PlayerPublic(**db_player.model_dump(exclude={"teams"}))
+    player.teams = []
+    for t_team_player in db_player.teams:
+        team_player_player = NameWithId(id=t_team_player.player.id, name=t_team_player.player.first_name)
+        team_player_team = NameWithId(id=t_team_player.team.id, name=t_team_player.team.name)
+        team_player = TeamToPlayerPublic(player=team_player_player, team=team_player_team, amplua=t_team_player.amplua)
+        player.teams.append(team_player)
+
+    return player
 
 
 @router.post("/")

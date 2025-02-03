@@ -47,7 +47,7 @@ async def new_team(
         session.exec(select(col(Team.id)).order_by(Team.id.desc())).first() or 0
     ) + 1
     logger.debug("creating new team with id %s", new_id)
-    player_ids = list(map(lambda x: x.player_id, team.players))
+    player_ids = list(map(lambda x: x.player, team.players))
     
     if len(set(player_ids)) != len(player_ids):
         raise HTTPException(status_code=404, detail="Players must be unique")

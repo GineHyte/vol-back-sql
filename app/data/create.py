@@ -4,6 +4,7 @@ from sqlmodel import Field
 
 from app.data.base import *
 from app.data.public import TeamToPlayerPublic
+from app.data.utils import NameWithId
 
 
 class GameCreate(GameBase):
@@ -20,13 +21,13 @@ class PlayerCreate(PlayerBase):
 
 class TeamCreate(TeamBase):
     players: List["TeamToPlayerCreate"] = Field(
-        ..., description="List of jsons {player_id: int, team_id: int, amplua: str}"
+        ..., description="List of TeamToPlayer relations"
     )
 
 
 class TeamToPlayerCreate(TeamToPlayerBase):
-    team_id: Optional[int] = Field(None, foreign_key="team.id")
-    player_id: Optional[int] = Field(None, foreign_key="player.id")
+    team: NameWithId
+    player: NameWithId 
 
 
 class FileCreate(FileBase):
