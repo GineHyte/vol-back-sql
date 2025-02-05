@@ -11,6 +11,7 @@ from app.data.update import TeamUpdate
 from app.data.create import TeamCreate
 from app.data.public import TeamPublic, TeamToPlayerPublic
 from app.core.logger import logger
+from app.data.utils import NameWithId
 
 
 router = APIRouter()
@@ -20,8 +21,19 @@ router = APIRouter()
 async def get_teams(*, session: Session = Depends(get_session)) -> Page[TeamPublic]:
     """Get all teams"""
     db_teams = session.exec(select(Team)).all()
+    teams = []
 
-    return paginate(db_teams)
+    for db_team in db_teams:
+        team = TeamPublic(**db_team.model_dump(exclude={"players"}))
+        for t_team_player in db_team.players:
+            team_player_player = TeamToPlayerPublic(
+                player=NameWithId(id=t_team_player.player.id, name=t_team_player.player.first_name),
+                amplua=t_team_player.amplua,
+            )
+            team.players.append(team_player_player)
+        teams.append(team)
+
+    return paginate(teams)
 
 
 @router.get("/{team_id}", response_model=TeamPublic)
@@ -32,8 +44,16 @@ async def get_team(
     db_team = session.get(Team, team_id)
     if not db_team:
         raise HTTPException(status_code=404, detail="Team not found")
+    
+    team = TeamPublic(**db_team.model_dump(exclude={"players"}))
+    for t_team_player in db_team.players:
+        team_player_player = TeamToPlayerPublic(
+            player=NameWithId(id=t_team_player.player.id, name=t_team_player.player.first_name),
+            amplua=t_team_player.amplua,
+        )
+        team.players.append(team_player_player)
 
-    return db_team
+    return team
 
 
 @router.post("/", response_model=Status)

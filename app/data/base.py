@@ -55,13 +55,13 @@ class GameBase(SQLModel):
 
 class TechBase(SQLModel):
     name: str
-    description: Optional[str]
+    description: Optional[str] = Field(None, description="Description")
 
 
 class SubtechBase(SQLModel):
     tech: int = Field(..., foreign_key="tech.id")
     name: str
-    description: Optional[str]
+    description: Optional[str] = Field(None, description="Description")
     difficulty: int = Field(..., description="Difficulty", ge=1, le=3)
 
 

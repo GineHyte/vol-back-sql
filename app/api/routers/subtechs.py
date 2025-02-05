@@ -10,7 +10,8 @@ from app.data.utils import Status
 from app.data.update import SubtechUpdate
 from app.data.create import SubtechCreate
 from app.data.public import SubtechPublic
-
+from app.data.utils import NameWithId
+from app.core.logger import logger
 
 router = APIRouter()
 
@@ -21,11 +22,20 @@ async def get_subtechs(
 ) -> Page[SubtechPublic]:
     """Get all subtechs"""
     if tech_id:
-        return paginate(
-            session.exec(select(Subtech).where(Subtech.tech == tech_id)).all()
+        db_subtechs = session.exec(select(Subtech).where(Subtech.tech == tech_id)).all()
+    else:
+        db_subtechs = session.exec(select(Subtech)).all()
+    subtechs = []
+    for db_subtech in db_subtechs:
+        logger.debug(f"DB Subtech: {db_subtech}")
+        subtech = SubtechPublic(**db_subtech.model_dump(exclude={"tech"}))
+        subtech.tech = NameWithId(
+            id=db_subtech.tech, name=session.get(Subtech, db_subtech.tech).name
         )
+        subtechs.append(subtech)
 
-    return paginate(session.exec(select(Subtech)).all())
+    logger.info(f"Subtechs: {subtechs}")
+    return paginate(subtechs)
 
 
 @router.get("/{subtech_id}")

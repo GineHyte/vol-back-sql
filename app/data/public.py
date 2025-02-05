@@ -21,7 +21,7 @@ class PlayerPublic(PlayerBase):
 class TeamPublic(TeamBase):
     id: int = Field(primary_key=True, description="Team ID")
     players: List["TeamToPlayerPublic"] = Field(
-        ..., description="List of TeamToPlayer relations"
+        [], description="List of TeamToPlayer relations"
     )
 
 
@@ -30,20 +30,22 @@ class GamePublic(GameBase):
     team_a: NameWithId
     team_b: NameWithId
 
+
 class TechPublic(TechBase):
     id: int = Field(None, description="Tech ID")
-    pass
+
 
 class SubtechPublic(SubtechBase):
     id: int = Field(None, description="Subtech ID")
-    tech: NameWithId
+    tech: Optional[NameWithId] = Field(None, description="Tech id")
+
 
 class ActionPublic(ActionBase):
     id: int = Field(None, description="Action ID")
-    game: NameWithId
-    team: NameWithId
-    player: NameWithId
-    subtech: NameWithId
+    game: Optional[NameWithId] = Field(None, description="Game id")
+    team: Optional[NameWithId] = Field(None, description="Team id")
+    player: Optional[NameWithId] = Field(None, description="Player id")
+    subtech: Optional[NameWithId] = Field(None, description="Subtech id")
 
 
 class ExercisePublic(ExerciseBase):
@@ -53,8 +55,8 @@ class ExercisePublic(ExerciseBase):
 
 
 class TeamToPlayerPublic(TeamToPlayerBase):
-    team: NameWithId
-    player: NameWithId 
+    team: Optional[NameWithId] = Field(None, description="Team id")
+    player: Optional[NameWithId] = Field(None, description="Player id")
 
 
 class FilePublic(FileBase):

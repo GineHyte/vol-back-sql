@@ -26,9 +26,8 @@ class TeamCreate(TeamBase):
 
 
 class TeamToPlayerCreate(TeamToPlayerBase):
-    team: NameWithId
-    player: NameWithId 
-
+    player: Optional[int] = Field(None, description="Player id")
+    team: Optional[int] = Field(None, description="Team id")
 
 class FileCreate(FileBase):
     pass

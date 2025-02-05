@@ -34,5 +34,5 @@ class Impact(Enum):
 
 
 class NameWithId(SQLModel):
-    id: Optional[int]
-    name: Optional[str]
+    id: Optional[int] = Field(None, description="ID")
+    name: Optional[str] = Field(None, description="Name")
