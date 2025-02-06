@@ -50,8 +50,8 @@ class ActionPublic(ActionBase):
 
 class ExercisePublic(ExerciseBase):
     id: int = Field(None, description="Exercise ID")
-    subtech: NameWithId
-    tech: NameWithId
+    subtech: Optional[NameWithId] = Field(None, description="Subtech id")
+    tech: Optional[NameWithId] = Field(None, description="Tech id")
 
 
 class TeamToPlayerPublic(TeamToPlayerBase):
