@@ -5,7 +5,7 @@ from fastapi_pagination import Page, paginate
 from sqlmodel import select, Session
 
 from app.core.db import get_session
-from app.data.db import Subtech
+from app.data.db import Subtech, Tech
 from app.data.utils import Status
 from app.data.update import SubtechUpdate
 from app.data.create import SubtechCreate
@@ -30,7 +30,7 @@ async def get_subtechs(
         logger.debug(f"DB Subtech: {db_subtech}")
         subtech = SubtechPublic(**db_subtech.model_dump(exclude={"tech"}))
         subtech.tech = NameWithId(
-            id=db_subtech.tech, name=session.get(Subtech, db_subtech.tech).name
+            id=db_subtech.tech, name=session.get(Tech, db_subtech.tech).name
         )
         subtechs.append(subtech)
 
