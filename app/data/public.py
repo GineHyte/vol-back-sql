@@ -27,8 +27,8 @@ class TeamPublic(TeamBase):
 
 class GamePublic(GameBase):
     id: int = Field(None, description="Game ID")
-    team_a: NameWithId
-    team_b: NameWithId
+    team_a: Optional[NameWithId] = Field(None, description="Team A id")
+    team_b: Optional[NameWithId] = Field(None, description="Team B id")
 
 
 class TechPublic(TechBase):

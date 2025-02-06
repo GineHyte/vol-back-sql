@@ -6,7 +6,7 @@ from sqlmodel import select, Session, delete, col
 
 from app.core.db import engine, get_session
 from app.data.db import Team, Game, Action, Player, Subtech, Tech
-from app.data.utils import Status
+from app.data.utils import Status, NameWithId
 from app.data.update import ActionUpdate
 from app.data.create import ActionCreate
 from app.data.public import ActionPublic
@@ -21,12 +21,33 @@ async def get_actions(
     *, session: Session = Depends(get_session), game_id: int
 ) -> Page[ActionPublic]:
     """Get all actions for a game"""
+    actions = []
     if game_id:
-        return paginate(
-            session.exec(select(Action).where(col(Action.game) == game_id)).all()
-        )
+        db_actions = session.exec(
+            select(Action).where(col(Action.game) == game_id).order_by(Action.id.desc())
+        ).all()
     else:
-        return paginate(session.exec(select(Action)).all())
+        db_actions = session.exec(select(Action).order_by(Action.id.desc())).all()
+    for db_action in db_actions:
+        action = ActionPublic(
+            **db_action.model_dump(exclude={"game", "team", "player", "subtech"})
+        )
+        action.game = NameWithId(
+            id=db_action.game, name=session.get(Game, db_action.game).name
+        )
+        action.team = NameWithId(
+            id=db_action.team, name=session.get(Team, db_action.team).name
+        )
+        player = session.get(Player, db_action.player)
+        action.player = NameWithId(
+            id=db_action.player, name=player.first_name + ' ' + player.last_name
+        )
+        action.subtech = NameWithId(
+            id=db_action.subtech, name=session.get(Subtech, db_action.subtech).name
+        )
+        actions.append(action)
+
+    return paginate(actions)
 
 
 @router.get("/{action_id}")

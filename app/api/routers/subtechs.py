@@ -46,7 +46,12 @@ async def get_subtech(
     db_subtech = session.get(Subtech, subtech_id)
     if not db_subtech:
         raise HTTPException(status_code=404, detail="Subtech not found")
-    return db_subtech
+
+    subtech = SubtechPublic(**db_subtech.model_dump(exclude={"tech"}))
+    subtech.tech = NameWithId(
+        id=db_subtech.tech, name=session.get(Subtech, db_subtech.tech).name
+    )
+    return subtech
 
 
 @router.post("/", response_model=Status)

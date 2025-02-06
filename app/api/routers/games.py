@@ -6,7 +6,7 @@ from sqlmodel import select, Session, delete, col, or_
 
 from app.core.db import engine, get_session
 from app.data.db import Team, Game, Player
-from app.data.utils import Status
+from app.data.utils import Status, NameWithId
 from app.data.update import GameUpdate
 from app.data.create import GameCreate
 from app.data.public import GamePublic
@@ -17,18 +17,52 @@ router = APIRouter()
 
 
 @router.get("/", response_model=Page[GamePublic])
-async def get_games(*, session: Session = Depends(get_session), player_id: int = None, team_id: int = None) -> Page[GamePublic]:
-    """Get all games"""
+async def get_games(
+    *,
+    session: Session = Depends(get_session),
+    player_id: int = None,
+    team_id: int = None
+) -> Page[GamePublic]:
+    """Get all games
+
+    :param player_id: When provided, returns games where player is in team
+    :param team_id: When provided, returns games where team is playing
+
+    :return: List of games (if nether player_id nor team_id provided, returns all games)
+    """
+    games = []
     if player_id:
-        games = []
+        db_games = []
+        db_games_ids = set()
         player = session.get(Player, player_id)
         for team_to_player in player.teams:
-            game = session.exec(select(Game).where(or_(Game.team_a == team_to_player.team_id, Game.team_b == team_to_player.team_id))).first()
-            if game: games.append(game)
-        return paginate(games)
-    if team_id:
-        return paginate(session.exec(select(Game).where(or_(Game.team_a == team_id, Game.team_b == team_id))).all())
-    return paginate(session.exec(select(Game)).all())
+            db_game = session.exec(
+                select(Game).where(
+                    or_(
+                        Game.team_a == team_to_player.team_id,
+                        Game.team_b == team_to_player.team_id,
+                    )
+                )
+            ).first()
+            db_games_ids.add(db_game.id)
+            if db_game and db_game.id not in db_games_ids:
+                db_games.append(db_game)
+    elif team_id:
+        db_games = session.exec(
+            select(Game).where(or_(Game.team_a == team_id, Game.team_b == team_id))
+        ).all()
+    else: 
+        db_games = session.exec(select(Game)).all()
+    for db_game in db_games:
+        game = GamePublic(**db_game.model_dump(exclude={"team_a", "team_b"}))
+        game.team_a = NameWithId(
+            id=db_game.team_a, name=session.get(Team, db_game.team_a).name
+        )
+        game.team_a = NameWithId(
+            id=db_game.team_b, name=session.get(Team, db_game.team_b).name
+        )
+        games.append(game)
+    return paginate(games)
 
 
 @router.get("/{game_id}")
