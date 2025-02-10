@@ -5,7 +5,7 @@ import logfire
 logger = getLogger("intern")
 
 
-def init_logger(app):
+def init_logfire(app):
     logfire.configure()
     logfire.instrument_fastapi(app)
     basicConfig(handlers=[logfire.LogfireLoggingHandler()])

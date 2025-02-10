@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.core.logger import logger
 from app.api.main import api_router
 from app.core.db import init_db
-from app.core.logger import init_logger, logger
+from app.core.logger import init_logfire, logger
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -28,7 +28,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# init_logger(app)
+if settings.LOGFIRE:
+    init_logfire(app)
 
 app.include_router(api_router)
 logger.info("API routes included")
