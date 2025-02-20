@@ -8,6 +8,7 @@ from app.core.logger import logger
 from app.api.main import api_router
 from app.core.db import init_db
 from app.core.logger import init_logfire, logger
+from app.core.search import init_search
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -18,6 +19,7 @@ add_pagination(app)
 disable_installed_extensions_check()
 
 init_db()
+init_search()
 logger.info("Database initialized")
 
 app.add_middleware(
