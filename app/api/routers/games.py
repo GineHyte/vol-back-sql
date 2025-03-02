@@ -51,16 +51,16 @@ async def get_games(
         db_games = session.exec(
             select(Game).where(or_(Game.team_a == team_id, Game.team_b == team_id))
         ).all()
-    else: 
+    else:
         db_games = session.exec(select(Game)).all()
     for db_game in db_games:
         game = GamePublic(**db_game.model_dump(exclude={"team_a", "team_b"}))
-        game.team_a = NameWithId(
-            id=db_game.team_a, name=session.get(Team, db_game.team_a).name
-        )
-        game.team_a = NameWithId(
-            id=db_game.team_b, name=session.get(Team, db_game.team_b).name
-        )
+        team_a = session.get(Team, db_game.team_a)
+        if team_a:
+            game.team_a = NameWithId(id=db_game.team_a, name=team_a.name)
+        team_b = session.get(Team, db_game.team_b)
+        if team_b:
+            game.team_b = NameWithId(id=db_game.team_b, name=team_b.name)
         games.append(game)
     return paginate(games)
 

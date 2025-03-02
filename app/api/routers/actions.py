@@ -39,9 +39,10 @@ async def get_actions(
             id=db_action.team, name=session.get(Team, db_action.team).name
         )
         player = session.get(Player, db_action.player)
-        action.player = NameWithId(
-            id=db_action.player, name=player.first_name + ' ' + player.last_name
-        )
+        if player:
+            action.player = NameWithId(
+                id=db_action.player, name=player.first_name + " " + player.last_name
+            )
         action.subtech = NameWithId(
             id=db_action.subtech, name=session.get(Subtech, db_action.subtech).name
         )
