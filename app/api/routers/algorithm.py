@@ -79,7 +79,7 @@ def calc_prozent(sesion: Session, model: SQLModel, total: int):
         sesion.add(row)
         
 async def block4(session: Session, player: int):
-    calculate_sums(session, player)
+    await calculate_sums(session, player)
     tech_top = session.exec(select(TechSum).where(col(TechSum.player) == player).order_by(col(TechSum.prozent).desc())).all()
     subtech_top = session.exec(select(SubtechSum).where(col(SubtechSum.player) == player).order_by(col(SubtechSum.prozent).desc())).all()
     impact_top = session.exec(select(ImpactSum).where(col(ImpactSum.player) == player).order_by(col(ImpactSum.prozent).desc())).all()
