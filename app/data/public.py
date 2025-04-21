@@ -65,3 +65,39 @@ class FilePublic(FileBase):
 
 class UpdatePublic(UpdateBase):
     name: str = Field(..., primary_key=True)
+
+
+class PlayerSumPublic(SQLModel):
+    player: NameWithId = Field(None, description="Player id")
+    sum_actions: int = Field(default=0)
+    prozent: float = Field(default=0)
+
+class TechSumPublic(SQLModel):
+    player: int = Field(None, description="Player id")
+    tech: NameWithId = Field(None, description="Tech id")
+    sum_actions: int = Field(default=0)
+    prozent: float = Field(default=0)
+
+class SubtechSumPublic(SQLModel):
+    player: int = Field(None, description="Player id")
+    tech: int = Field(None, description="Tech id")
+    subtech: NameWithId = Field(None, description="Subtech id")
+    sum_actions: int = Field(default=0)
+    prozent: float = Field(default=0)
+
+class ImpactSumPublic(SQLModel):
+    player: int = Field(None, description="Player id")
+    tech: int = Field(None, description="Tech id")
+    subtech: int = Field(None, description="Subtech id")
+    impact: Impact = Field(None, description="Impact")
+    sum_actions: int = Field(default=0)
+    prozent: float = Field(default=0)
+
+class ZoneSumPublic(SQLModel):
+    player: int = Field(None, description="Player id")
+    tech: int = Field(None, description="Tech id")
+    subtech: int = Field(None, description="Subtech id")
+    impact: Impact = Field(None, description="Impact")
+    zone: str = Field(None, description="Zone")
+    sum_actions: int = Field(default=0)
+    prozent: float = Field(default=0)

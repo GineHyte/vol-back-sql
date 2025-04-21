@@ -21,16 +21,16 @@ class Status(SQLModel):
 
 
 class Amplua(Enum):
-    DEFENDER = "Defender"
-    ATTACKER = "Attacker"
-    UNIVERSAL = "Universal"
+    DEFENDER = "DEFENDER"
+    ATTACKER = "ATTACKER"
+    UNIVERSAL = "UNIVERSAL"
 
 
 class Impact(Enum):
-    EFFEIENCY = "Efficiency"
-    MISTAKE = "Mistake"  # just a mistake
-    SCORE = "Score"
-    FAIL = "Fail"  # - score
+    EFFICIENCY = "EFFICIENCY"
+    MISTAKE = "MISTAKE"  # just a mistake
+    SCORE = "SCORE"
+    FAIL = "FAIL"  # - score
 
 
 class NameWithId(SQLModel):

@@ -39,6 +39,20 @@ async def get_exercises(
 async def get_exercise(
     *, session: Session = Depends(get_session), exercise_id: str
 ) -> ExercisePublic:
+    """
+    Retrieve an exercise by its ID.
+
+    Args:
+        session (Session): The database session dependency.
+        exercise_id (str): The unique identifier of the exercise to retrieve.
+
+    Returns:
+        ExercisePublic: The public representation of the exercise, including its
+        associated subtech and tech details.
+
+    Raises:
+        HTTPException: If the exercise with the given ID is not found, raises a 404 error.
+    """
     """Get exercise by id"""
     db_exercise = session.get(Exercise, exercise_id)
     if not db_exercise:
