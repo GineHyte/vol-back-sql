@@ -20,10 +20,10 @@ async def calculate_stats_player(
         raise HTTPException(status_code=404, detail="Player not found")
 
     # Calculate stats
-    await calculate_sums(session, player)
+    await calculate_sums(session, player_id)
 
     # Return stats
-    return Status(status="success", detail="Game created")
+    return Status(status="success", detail="Stats calculated successfully")
 
 
 @router.get("/stats/{player_id}")
@@ -239,11 +239,11 @@ async def get_stats_impact(
 
 
 async def calculate_sums(session: Session, player: int):
-    session.exec(delete(PlayerSum))
-    session.exec(delete(TechSum))
-    session.exec(delete(SubtechSum))
-    session.exec(delete(ImpactSum))
-    session.exec(delete(ZoneSum))
+    # session.exec(delete(PlayerSum))
+    # session.exec(delete(TechSum))
+    # session.exec(delete(SubtechSum))
+    # session.exec(delete(ImpactSum))
+    # session.exec(delete(ZoneSum))
     player_sum = session.get(PlayerSum, player)
     if player_sum is None:
         player_sum = PlayerSum(player=player)
