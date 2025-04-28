@@ -134,11 +134,11 @@ async def create_plan(session: Session, player: int):
             time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent
             free_time += time_for_subtech - floor(time_for_subtech)
             time_for_subtech = floor(time_for_subtech)
-            logger.debug(f"SubTech {subtech.subtech}, {time_for_subtech} min")
+            logger.debug(f"SubTech {subtech.subtech}, {time_for_subtech} min {'- skip' if time_for_subtech <= 5 else ''}")
 
             if time_for_subtech <= 5:
                 free_time += time_for_subtech
-                time_for_subtech = 0
+                time_for_subtech = -1
             while time_for_subtech > 0:
                 exercises = session.exec(
                     select(Exercise).where(col(Exercise.subtech) == subtech.subtech)
