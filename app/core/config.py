@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     SQLITE_DB: str
     DATETIME_FORMAT: str = "%Y-%m-%d %H:%M:%S"
     LOGFIRE: int = 0
+    MINUTES_IN_WEEK: int = 480
 
     LOGGING_CONFIG: dict = {
         "version": 1,

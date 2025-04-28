@@ -1,19 +1,21 @@
-from sqlmodel import select, Session, col, SQLModel, desc, delete
+from sqlmodel import select, Session, col, SQLModel, desc, delete, and_
 from fastapi import HTTPException
+from math import floor
 
 from app.data.algorithm import *
 from app.data.db import *
 from app.data.public import *
 from app.core.logger import logger
+from app.core.config import settings
 
 
 async def calculate_sums(session: Session, player: int):
     # sums tierdown
     session.exec(delete(PlayerSum).where(col(PlayerSum.player) == player))
-    # session.exec(delete(TechSum).where(col(PlayerSum.player) == player))
-    # session.exec(delete(SubtechSum).where(col(PlayerSum.player) == player))
-    # session.exec(delete(ImpactSum).where(col(PlayerSum.player) == player))
-    # session.exec(delete(ZoneSum).where(col(PlayerSum.player) == player))
+    session.exec(delete(TechSum).where(col(TechSum.player) == player))
+    session.exec(delete(SubtechSum).where(col(SubtechSum.player) == player))
+    session.exec(delete(ImpactSum).where(col(ImpactSum.player) == player))
+    session.exec(delete(ZoneSum).where(col(ZoneSum.player) == player))
     session.commit()
     #
     player_sum = PlayerSum(player=player)
@@ -89,24 +91,67 @@ async def calculate_sums(session: Session, player: int):
     if player_sum.sum_actions == 0:
         session.close()
         raise HTTPException(status_code=404, detail="No actions found for player")
-    calc_prozent(session, player_sum, player_sum.sum_actions)
-    calc_prozent(session, tech_sum, player_sum.sum_actions)
-    calc_prozent(session, SubtechSum, player_sum.sum_actions)
-    calc_prozent(session, ImpactSum, player_sum.sum_actions)
-    calc_prozent(session, ZoneSum, player_sum.sum_actions)
+    calc_prozent(session, PlayerSum, player_sum.sum_actions, player)
+    calc_prozent(session, TechSum, player_sum.sum_actions, player)
+    calc_prozent(session, SubtechSum, player_sum.sum_actions, player)
+    calc_prozent(session, ImpactSum, player_sum.sum_actions, player)
+    calc_prozent(session, ZoneSum, player_sum.sum_actions, player)
     session.commit()
     session.close()
 
 
-def calc_prozent(sesion: Session, model: SQLModel, total: int):
-    for row in sesion.exec(select(model)).all():
+def calc_prozent(sesion: Session, model: SQLModel, total: int, player: int):
+    for row in sesion.exec(select(model).where(col(model.player) == player)).all():
         row.prozent = row.sum_actions / total
         sesion.add(row)
 
 
 async def create_plan(session: Session, player: int):
-    player_sum = session.get(PlayerSum, player)
+    free_time = 0
+    exercise_pool = []
+    plan = []
     for tech in session.exec(
-        select(TechSum).where(TechSum.player == player).order_by(desc(TechSum.prozent))
+        select(TechSum)
+        .where(col(TechSum.player) == player)
+        .order_by(desc(TechSum.prozent))
     ).all():
-        logger.debug(f"{tech.tech}, {tech.prozent}")
+        # time_for_tech = settings.MINUTES_IN_WEEK * tech.prozent
+        # free_time += time_for_tech - floor(time_for_tech)
+        # time_for_tech = floor(time_for_tech)
+        # if (time_for_tech <= 5):
+        #     free_time += time_for_tech
+        #     time_for_tech = 0
+        # logger.debug(f"Tech {tech.tech}, {time_for_tech}min")
+        for subtech in session.exec(
+            select(SubtechSum)
+            .where(
+                and_(
+                    col(SubtechSum.player) == player, col(SubtechSum.tech) == tech.tech
+                )
+            )
+            .order_by(desc(SubtechSum.prozent))
+        ).all():
+            time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent
+            free_time += time_for_subtech - floor(time_for_subtech)
+            time_for_subtech = floor(time_for_subtech)
+            logger.debug(f"SubTech {subtech.subtech}, {time_for_subtech} min")
+
+            if time_for_subtech <= 5:
+                free_time += time_for_subtech
+                time_for_subtech = 0
+            while time_for_subtech > 0:
+                exercises = session.exec(
+                    select(Exercise).where(col(Exercise.subtech) == subtech.subtech)
+                ).all()
+                found = False
+                for exercise in exercises:
+                    if exercise.id not in exercise_pool:
+                        found = True
+                        exercise_pool.append(exercise.id)
+                        plan.append(NameWithId(id=exercise.id, name=exercise.name))
+                        time_for_subtech -= exercise.time_per_exercise
+                        break
+                if not found: break
+    free_time = floor(free_time)
+    logger.debug(f"free time: {free_time}")
+    return plan
