@@ -1,4 +1,4 @@
-from sqlmodel import select, Session, col, SQLModel, desc, delete, and_
+from sqlmodel import select, Session, col, SQLModel, desc, delete, and_, func
 from fastapi import HTTPException
 from math import floor
 
@@ -107,21 +107,38 @@ def calc_prozent(sesion: Session, model: SQLModel, total: int, player: int):
 
 
 async def create_plan(session: Session, player: int):
+    # teardown last plan TODO
+    session.exec(
+        delete(Plan).where(and_(col(Plan.player) == player, col(Plan.id) == 1))
+    )
+    session.exec(
+        delete(PlanWeek).where(
+            and_(col(PlanWeek.player) == player, col(PlanWeek.plan) == 1),
+            col(PlanWeek.week) == 1,
+        )
+    )
+    session.exec(
+        delete(PlanExercise).where(
+            and_(col(PlanExercise.player) == player, col(PlanExercise.plan) == 1),
+            col(PlanExercise.week) == 1
+        )
+    )
+    #
     free_time = 0
     exercise_pool = []
-    plan = []
+    planned_exercises = []
+    plan = Plan(player=player, start_date=datetime.now(), id=1)
+    plan_week = PlanWeek(player=player, plan=1, week=1)
+    session.add(plan)
+    session.add(plan_week)
+    session.commit()
+    session.refresh(plan)
+    session.refresh(plan_week)
     for tech in session.exec(
         select(TechSum)
         .where(col(TechSum.player) == player)
         .order_by(desc(TechSum.prozent))
     ).all():
-        # time_for_tech = settings.MINUTES_IN_WEEK * tech.prozent
-        # free_time += time_for_tech - floor(time_for_tech)
-        # time_for_tech = floor(time_for_tech)
-        # if (time_for_tech <= 5):
-        #     free_time += time_for_tech
-        #     time_for_tech = 0
-        # logger.debug(f"Tech {tech.tech}, {time_for_tech}min")
         for subtech in session.exec(
             select(SubtechSum)
             .where(
@@ -134,7 +151,9 @@ async def create_plan(session: Session, player: int):
             time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent
             free_time += time_for_subtech - floor(time_for_subtech)
             time_for_subtech = floor(time_for_subtech)
-            logger.debug(f"SubTech {subtech.subtech}, {time_for_subtech} min {'- skip' if time_for_subtech <= 5 else ''}")
+            logger.debug(
+                f"SubTech {subtech.subtech}, {time_for_subtech} min {'- skip' if time_for_subtech <= 5 else ''}"
+            )
 
             if time_for_subtech <= 5:
                 free_time += time_for_subtech
@@ -148,10 +167,32 @@ async def create_plan(session: Session, player: int):
                     if exercise.id not in exercise_pool:
                         found = True
                         exercise_pool.append(exercise.id)
-                        plan.append(NameWithId(id=exercise.id, name=exercise.name))
+                        planned_exercises.append(exercise)
+                        max_id = (
+                            session.exec(
+                                select(func.max(PlanExercise.id)).where(
+                                    and_(
+                                        col(PlanExercise.player) == player,
+                                        col(PlanExercise.plan) == plan.id,
+                                        col(PlanExercise.week) == plan_week.week,
+                                    )
+                                )
+                            ).first()
+                            or 0
+                        )
+                        exercise_db = PlanExercise(
+                            id=max_id + 1,
+                            player=player,
+                            plan=plan.id,
+                            week=plan_week.week,
+                            exercise=exercise.id,
+                        )
+                        session.add(exercise_db)
                         time_for_subtech -= exercise.time_per_exercise
                         break
-                if not found: break
+                if not found:
+                    break
+    session.commit()
     free_time = floor(free_time)
     logger.debug(f"free time: {free_time}")
     return plan

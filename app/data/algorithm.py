@@ -48,7 +48,7 @@ class ZoneSum(SQLModel, table=True):
 
 
 class Plan(SQLModel, table=True):
-    player: int = Field(foreign_key="player.id", ondelete="CASCADE", index=True)
+    player: int = Field(foreign_key="player.id", ondelete="CASCADE", primary_key=True)
     id: int = Field(primary_key=True)
     start_date: datetime = Field()
 
@@ -62,7 +62,7 @@ class Plan(SQLModel, table=True):
 
 
 class PlanWeek(SQLModel, table=True):
-    player: int = Field(foreign_key="player.id", ondelete="CASCADE")
+    player: int = Field(foreign_key="player.id", ondelete="CASCADE", primary_key=True)
     plan: int = Field(primary_key=True, foreign_key="plan.id", ondelete="CASCADE")
     week: int = Field(primary_key=True)
 

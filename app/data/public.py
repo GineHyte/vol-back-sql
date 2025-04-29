@@ -101,3 +101,7 @@ class ZoneSumPublic(SQLModel):
     zone: str = Field(None, description="Zone")
     sum_actions: int = Field(default=0)
     prozent: float = Field(default=0)
+
+class PlanWeekPublic(SQLModel):
+    exercises: List[ExercisePublic] = Field(None, description="List of exercises")
+    week: int = Field(None, description="Week number")

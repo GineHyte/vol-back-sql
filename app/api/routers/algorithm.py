@@ -1,4 +1,4 @@
-from sqlmodel import select, Session, col, SQLModel, delete
+from sqlmodel import select, Session, col, SQLModel, delete, and_
 from fastapi import APIRouter, HTTPException, Depends
 
 from app.core.db import get_session
@@ -104,9 +104,7 @@ async def get_stats_tech(
     # Create the public model with the correct NameWithId object
     tech_top = TechSumPublic(
         **tech_top_db.model_dump(exclude=["tech"]),
-        tech=NameWithId(
-            id=tech.id, name=tech.name
-        ),
+        tech=NameWithId(id=tech.id, name=tech.name),
     )
 
     # For subtech top, we need to batch fetch the tech names
@@ -157,7 +155,6 @@ async def get_stats_subtech(
     if not subtech:
         raise HTTPException(status_code=404, detail="Subtech not found")
 
-    
     # Get stats
     subtech_top_db = session.exec(
         select(SubtechSum)
@@ -176,9 +173,7 @@ async def get_stats_subtech(
     # Create the public model with the correct NameWithId object
     subtech_top = SubtechSumPublic(
         **subtech_top_db.model_dump(exclude=["subtech"]),
-        subtech=NameWithId(
-            id=subtech.id, name=subtech.name
-        ),
+        subtech=NameWithId(id=subtech.id, name=subtech.name),
     )
 
     # Return stats
@@ -249,3 +244,32 @@ async def generate_plan_player(
         raise HTTPException(status_code=404, detail="Player not found")
     plan = await create_plan(session, player_id)
     return plan
+
+
+@router.get("/plan/{player_id}/{week_number}")
+async def get_plan_player_week(
+    player_id: int,
+    week_number: int,
+    session: Session = Depends(get_session),
+):
+    player_plan = session.get(Plan, (player_id, 1))
+    if not player_plan:
+        raise HTTPException(status_code=404, detail="Player or PlayerPlan not found")
+
+    plan_week = session.get(PlanWeek, (player_id, 1, week_number))
+    if not plan_week:
+        raise HTTPException(status_code=404, detail="Plan for this week not found")
+
+    plan_week_public = PlanWeekPublic(week=week_number, exercises=[])
+
+    for plan_exercise in session.exec(
+        select(PlanExercise).where(
+            and_(
+                col(PlanExercise.player) == player_id,
+                col(PlanExercise.week) == week_number,
+            )
+        )
+    ).all():
+        plan_week_public.exercises.append(session.get(Exercise, plan_exercise.exercise))
+
+    return plan_week_public
