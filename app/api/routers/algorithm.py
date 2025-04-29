@@ -243,7 +243,7 @@ async def generate_plan_player(
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
     plan = await create_plan(session, player_id)
-    return plan
+    return Status(status="success", detail="Plan generated successfully")
 
 
 @router.get("/plan/{player_id}/{week_number}")
