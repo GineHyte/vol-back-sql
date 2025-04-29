@@ -67,7 +67,7 @@ class PlanWeek(SQLModel, table=True):
     week: int = Field(primary_key=True)
 
 class PlanExercise(SQLModel, table=True):
-    player: int = Field(foreign_key="player.id", ondelete="CASCADE")
+    player: int = Field(foreign_key="player.id", ondelete="CASCADE", primary_key=True)
     plan: int = Field(primary_key=True, foreign_key="plan.id", ondelete="CASCADE")
     week: int = Field(primary_key=True, foreign_key="planweek.week", ondelete="CASCADE")
     id: int = Field(primary_key=True)
