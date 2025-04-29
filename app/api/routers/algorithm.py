@@ -270,6 +270,14 @@ async def get_plan_player_week(
             )
         )
     ).all():
-        plan_week_public.exercises.append(session.get(Exercise, plan_exercise.exercise))
+        db_exercise = session.get(Exercise, plan_exercise.exercise)
+        exercise = ExercisePublic(**db_exercise.model_dump(exclude=["subtech", "tech"]))
+        exercise.subtech = NameWithId(
+            id=db_exercise.subtech, name=session.get(Subtech, db_exercise.subtech).name
+        )
+        exercise.tech = NameWithId(
+            id=db_exercise.tech, name=session.get(Tech, db_exercise.tech).name
+        )
+        plan_week_public.exercises.append(exercise)
 
     return plan_week_public
