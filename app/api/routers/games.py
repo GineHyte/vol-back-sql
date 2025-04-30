@@ -21,7 +21,7 @@ async def get_games(
     *,
     session: Session = Depends(get_session),
     player_id: int = None,
-    team_id: int = None
+    team_id: int = None,
 ) -> Page[GamePublic]:
     """Get all games
 
@@ -36,17 +36,18 @@ async def get_games(
         db_games_ids = set()
         player = session.get(Player, player_id)
         for team_to_player in player.teams:
-            db_game = session.exec(
+            t_games = session.exec(
                 select(Game).where(
                     or_(
                         Game.team_a == team_to_player.team_id,
                         Game.team_b == team_to_player.team_id,
                     )
                 )
-            ).first()
-            db_games_ids.add(db_game.id)
-            if db_game and db_game.id not in db_games_ids:
-                db_games.append(db_game)
+            ).all()
+            for t_game in t_games:
+                if t_game.id not in db_games_ids:
+                    db_games_ids.add(t_game.id)
+                    db_games.append(t_game)
     elif team_id:
         db_games = session.exec(
             select(Game).where(or_(Game.team_a == team_id, Game.team_b == team_id))

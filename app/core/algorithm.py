@@ -25,7 +25,6 @@ async def calculate_sums(session: Session, player: int):
     for action in session.exec(
         select(Action).where(col(Action.player) == player)
     ).all():
-        logger.debug(player_sum)
         player_sum.sum_actions += 1
 
         tech = session.get(Subtech, action.subtech).tech
@@ -151,9 +150,6 @@ async def create_plan(session: Session, player: int):
             time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent
             free_time += time_for_subtech - floor(time_for_subtech)
             time_for_subtech = floor(time_for_subtech)
-            logger.debug(
-                f"SubTech {subtech.subtech}, {time_for_subtech} min {'- skip' if time_for_subtech <= 5 else ''}"
-            )
 
             if time_for_subtech <= 5:
                 free_time += time_for_subtech
@@ -194,5 +190,4 @@ async def create_plan(session: Session, player: int):
                     break
     session.commit()
     free_time = floor(free_time)
-    logger.debug(f"free time: {free_time}")
     return plan
