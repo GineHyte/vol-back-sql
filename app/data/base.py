@@ -33,7 +33,6 @@ class PlayerBase(SQLModel):
 
 class TeamBase(SQLModel):
     name: str
-    coach: Optional[int] = Field(None, foreign_key="coach.id")
 
 
 class GameBase(SQLModel):
@@ -59,7 +58,7 @@ class TechBase(SQLModel):
 
 
 class SubtechBase(SQLModel):
-    tech: int = Field(..., foreign_key="tech.id")
+    tech: int = Field(..., foreign_key="tech.id", ondelete="CASCADE")
     name: str
     description: Optional[str] = Field(None, description="Description")
     difficulty: int = Field(..., description="Difficulty", ge=1, le=3)
@@ -78,8 +77,8 @@ class ActionBase(SQLModel):
 class ExerciseBase(SQLModel):
     name: str
     description: Optional[str]
-    tech: int = Field(..., foreign_key="tech.id")
-    subtech: int = Field(..., foreign_key="subtech.id")
+    tech: int = Field(..., foreign_key="tech.id", ondelete="CASCADE")
+    subtech: int = Field(..., foreign_key="subtech.id", ondelete="CASCADE")
     image_url: Optional[str] = Field(None, description="Image URL")
     video_url: Optional[str] = Field(None, description="Video URL")
     difficulty: int
@@ -101,8 +100,8 @@ class FileBase(SQLModel):
 
 
 class TeamToPlayerBase(SQLModel):
-    team: int = Field(..., foreign_key="team.id")
-    player: int = Field(..., foreign_key="player.id")
+    team: int = Field(..., foreign_key="team.id", ondelete="CASCADE")
+    player: int = Field(..., foreign_key="player.id", ondelete="CASCADE")
     amplua: Amplua
 
 
@@ -110,3 +109,13 @@ class UpdateBase(SQLModel):
     url: str
     notes: str
     pub_date: datetime
+
+
+class CoachSessionBase(SQLModel):
+    access_token: str = Field(...)
+    refresh_token: str = Field(..., primary_key=True)
+
+
+class AuthBase(SQLModel):
+    username: str = Field(..., description="Username")
+    password: str = Field(..., description="Password")

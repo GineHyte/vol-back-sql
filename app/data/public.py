@@ -105,3 +105,6 @@ class ZoneSumPublic(SQLModel):
 class PlanWeekPublic(SQLModel):
     exercises: List[ExercisePublic] = Field(None, description="List of exercises")
     week: int = Field(None, description="Week number")
+
+class CoachSessionPublic(CoachSessionBase):
+    expires_in: int = Field(..., description="Expiration time in seconds")

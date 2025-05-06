@@ -9,7 +9,7 @@ from app.core.logger import logger
 from app.core.config import settings
 
 
-async def calculate_sums(session: Session, player: int):
+async def calculate_sums(session: CoachSession, player: int):
     # sums tierdown
     session.exec(delete(PlayerSum).where(col(PlayerSum.player) == player))
     session.exec(delete(TechSum).where(col(TechSum.player) == player))
@@ -99,13 +99,13 @@ async def calculate_sums(session: Session, player: int):
     session.close()
 
 
-def calc_prozent(sesion: Session, model: SQLModel, total: int, player: int):
+def calc_prozent(sesion: CoachSession, model: SQLModel, total: int, player: int):
     for row in sesion.exec(select(model).where(col(model.player) == player)).all():
         row.prozent = row.sum_actions / total
         sesion.add(row)
 
 
-async def create_plan(session: Session, player: int):
+async def create_plan(session: CoachSession, player: int):
     # teardown last plan TODO
     session.exec(
         delete(Plan).where(and_(col(Plan.player) == player, col(Plan.id) == 1))

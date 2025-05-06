@@ -3,8 +3,6 @@ from typing import List, Optional
 from sqlmodel import Field
 
 from app.data.base import *
-from app.data.public import TeamToPlayerPublic
-from app.data.utils import NameWithId
 
 
 class GameCreate(GameBase):
@@ -50,4 +48,7 @@ class ExerciseCreate(ExerciseBase):
 
 
 class UpdateCreate(UpdateBase):
+    pass
+
+class AuthCreate(AuthBase):
     pass

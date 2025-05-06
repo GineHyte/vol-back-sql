@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     SECRET_KEY: str = secrets.token_urlsafe(32)
+    ALGORITHM = "HS256"
     PROJECT_NAME: str
     DESCRIPTION: str = ""
     VERSION: str

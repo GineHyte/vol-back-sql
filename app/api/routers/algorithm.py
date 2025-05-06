@@ -14,7 +14,7 @@ router = APIRouter()
 
 @router.get("/stats/calculate/{player_id}")
 async def calculate_stats_player(
-    player_id: int, session: Session = Depends(get_session)
+    player_id: int, session: CoachSession = Depends(get_session)
 ):
     player = session.get(Player, player_id)
     if not player:
@@ -28,7 +28,7 @@ async def calculate_stats_player(
 
 
 @router.get("/stats/{player_id}")
-async def get_stats_player(player_id: int, session: Session = Depends(get_session)):
+async def get_stats_player(player_id: int, session: CoachSession = Depends(get_session)):
     player = session.get(Player, player_id)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
@@ -78,7 +78,7 @@ async def get_stats_player(player_id: int, session: Session = Depends(get_sessio
 
 @router.get("/stats/{player_id}/{tech_id}")
 async def get_stats_tech(
-    player_id: int, tech_id: int, session: Session = Depends(get_session)
+    player_id: int, tech_id: int, session: CoachSession = Depends(get_session)
 ):
     player = session.get(Player, player_id)
     if not player:
@@ -141,7 +141,7 @@ async def get_stats_subtech(
     player_id: int,
     tech_id: int,
     subtech_id: int,
-    session: Session = Depends(get_session),
+    session: CoachSession = Depends(get_session),
 ):
     player = session.get(Player, player_id)
     if not player:
@@ -189,7 +189,7 @@ async def get_stats_impact(
     tech_id: int,
     subtech_id: int,
     impact: str,
-    session: Session = Depends(get_session),
+    session: CoachSession = Depends(get_session),
 ):
     player = session.get(Player, player_id)
     if not player:
@@ -237,7 +237,7 @@ async def get_stats_impact(
 @router.get("/plan/{player_id}")
 async def generate_plan_player(
     player_id: int,
-    session: Session = Depends(get_session),
+    session: CoachSession = Depends(get_session),
 ):
     player = session.get(Player, player_id)
     if not player:
@@ -250,7 +250,7 @@ async def generate_plan_player(
 async def get_plan_player_week(
     player_id: int,
     week_number: int,
-    session: Session = Depends(get_session),
+    session: CoachSession = Depends(get_session),
 ):
     player_plan = session.get(Plan, (player_id, 1))
     if not player_plan:
