@@ -115,7 +115,6 @@ class CoachSessionBase(SQLModel):
     access_token: str = Field(...)
     refresh_token: str = Field(..., primary_key=True)
 
-
 class AuthBase(SQLModel):
     username: str = Field(..., description="Username")
     password: str = Field(..., description="Password")

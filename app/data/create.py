@@ -52,3 +52,7 @@ class UpdateCreate(UpdateBase):
 
 class AuthCreate(AuthBase):
     pass
+
+class TokenCreate(SQLModel):
+    refresh_token: str = Field(..., description="Refresh Token")
+    username: str = Field(..., description="Coach username")
