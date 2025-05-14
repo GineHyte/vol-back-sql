@@ -150,6 +150,31 @@ async def create_plan(session: CoachSession, player: int):
             time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent
             free_time += time_for_subtech - floor(time_for_subtech)
             time_for_subtech = floor(time_for_subtech)
+            impacts = session.exec(select(ImpactSum).where(
+                and_(
+                    col(ImpactSum.player) == player,
+                    col(ImpactSum.tech) == tech.tech,
+                    col(ImpactSum.subtech) == subtech.subtech,
+                )
+            )).all()
+            if not impacts:
+                continue
+
+            for impact in impacts:
+                match impact.impact:
+                    case Impact.EFFICIENCY:
+                        time_for_efficiency = settings.MINUTES_IN_WEEK * impact.prozent
+                    case Impact.SCORE:
+                        time_for_score = settings.MINUTES_IN_WEEK * impact.prozent
+                    case Impact.FAIL:
+                        time_for_fail = settings.MINUTES_IN_WEEK * impact.prozent
+                    case Impact.MISTAKE:
+                        time_for_mistake = settings.MINUTES_IN_WEEK * impact.prozent
+                    case _:
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Impact {impact.impact} not found",
+                        )
 
             if time_for_subtech <= 5:
                 free_time += time_for_subtech
@@ -182,6 +207,8 @@ async def create_plan(session: CoachSession, player: int):
                             plan=plan.id,
                             week=plan_week.week,
                             exercise=exercise.id,
+                            from_zone=exercise.from_zone,
+                            to_zone=exercise.to_zone,
                         )
                         session.add(exercise_db)
                         time_for_subtech -= exercise.time_per_exercise

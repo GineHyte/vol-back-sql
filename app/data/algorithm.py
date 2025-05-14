@@ -71,4 +71,6 @@ class PlanExercise(SQLModel, table=True):
     plan: int = Field(primary_key=True, foreign_key="plan.id", ondelete="CASCADE")
     week: int = Field(primary_key=True, foreign_key="planweek.week", ondelete="CASCADE")
     id: int = Field(primary_key=True)
+    from_zone: int = Field(None)
+    to_zone: int = Field(None)
     exercise: int = Field(foreign_key="exercise.id", ondelete="CASCADE")
