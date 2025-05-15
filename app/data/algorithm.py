@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import field_validator
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Relationship
 
 from app.data.utils import Impact
 
@@ -59,12 +59,23 @@ class Plan(SQLModel, table=True):
         if isinstance(v, datetime):
             return v
         return datetime.fromisoformat(v)
+    
+    weeks: List["PlanWeek"] = Relationship(
+        back_populates="plan",
+        cascade_delete=True,
+    )
 
 
 class PlanWeek(SQLModel, table=True):
     player: int = Field(foreign_key="player.id", ondelete="CASCADE", primary_key=True)
     plan: int = Field(primary_key=True, foreign_key="plan.id", ondelete="CASCADE")
     week: int = Field(primary_key=True)
+
+    exercisies: List["PlanExercise"] = Relationship(
+        back_populates="week",
+        cascade_delete=True,
+    )
+
 
 class PlanExercise(SQLModel, table=True):
     player: int = Field(foreign_key="player.id", ondelete="CASCADE", primary_key=True)
