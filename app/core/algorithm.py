@@ -1,4 +1,4 @@
-from sqlmodel import select, Session, col, SQLModel, desc, delete, and_, func, or_, not_
+from sqlmodel import select, Session, col, SQLModel, text, desc, delete, and_, func, or_, not_
 from fastapi import HTTPException
 from math import floor
 
@@ -107,16 +107,37 @@ def calc_prozent(session: Session, model: SQLModel, total: int, player: int):
 
 async def create_plan(session: Session, player: int):
     # teardown last plan TODO
-    session.exec(
-        delete(Plan).where(and_(col(Plan.player) == player, col(Plan.id) == 1))
-    )
+    fk_status_result = session.exec(text("PRAGMA foreign_keys;")).scalar_one_or_none()
+    logger.debug(f"PRAGMA foreign_keys status before delete: {fk_status_result}") # Ожидаемое значение: 1
+    # teardown last plan if it exists
+    existing_plan = session.exec(
+        select(Plan).where(
+            and_(col(Plan.player) == player, col(Plan.id) == 1)
+        )
+    ).first()
+    if existing_plan:
+        session.exec(
+            delete(Plan).where(
+                and_(col(Plan.player) == player, col(Plan.id) == 1)
+            )
+        )
     session.commit()
+
+    plan_weeks = session.exec(
+        select(PlanWeek).where(and_(col(PlanWeek.player) == player, col(PlanWeek.plan) == 1))
+    ).all()
+
+    if not plan_weeks:
+        logger.debug("No plan weeks found")
+    else:
+        logger.debug("Plan weeks found", plan_weeks)
     plan = Plan(player=player, start_date=datetime.now(), id=1)
     for week in range(1, 13):
         free_time = 0
         planned_exercises = []
-        plan_week = PlanWeek(player=player, plan=1, week=week)
         session.add(plan)
+        session.commit()
+        plan_week = PlanWeek(player=player, plan=1, week=week)
         session.add(plan_week)
         session.commit()
         session.refresh(plan)
