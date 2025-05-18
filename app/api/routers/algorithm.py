@@ -27,8 +27,10 @@ async def calculate_stats_player(
     return Status(status="success", detail="Stats calculated successfully")
 
 
-@router.get("/stats/{player_id}")
-async def get_stats_player(player_id: int, session: CoachSession = Depends(get_session)):
+@router.get("/stats/{player_id}", response_model=PlayerStatsPublic)
+async def get_stats_player(
+    player_id: int, session: CoachSession = Depends(get_session)
+):
     player = session.get(Player, player_id)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
@@ -70,13 +72,13 @@ async def get_stats_player(player_id: int, session: CoachSession = Depends(get_s
         )
 
     # Return stats
-    return {
-        "player_sum": player_sum,
-        "tech_top": tech_sums,
-    }
+    return PlayerStatsPublic(
+        player_sum=player_sum,
+        tech_top=tech_sums,
+    )
 
 
-@router.get("/stats/{player_id}/{tech_id}")
+@router.get("/stats/{player_id}/{tech_id}", response_model=TechStatsPublic)
 async def get_stats_tech(
     player_id: int, tech_id: int, session: CoachSession = Depends(get_session)
 ):
@@ -130,13 +132,13 @@ async def get_stats_tech(
         )
 
     # Return stats
-    return {
-        "tech_top": tech_top,
-        "subtech_top": subtech_top,
-    }
+    return TechStatsPublic(
+        tech_top=tech_top,
+        subtech_top=subtech_top,
+    )
 
 
-@router.get("/stats/{player_id}/{tech_id}/{subtech_id}")
+@router.get("/stats/{player_id}/{tech_id}/{subtech_id}", response_model=SubtechStatsPublic)
 async def get_stats_subtech(
     player_id: int,
     tech_id: int,
@@ -177,13 +179,13 @@ async def get_stats_subtech(
     )
 
     # Return stats
-    return {
-        "subtech_top": subtech_top,
-        "impact_top": impact_top_rows,
-    }
+    return SubtechStatsPublic(
+        subtech_top=subtech_top,
+        impact_top=impact_top_rows,
+    )
 
 
-@router.get("/stats/{player_id}/{tech_id}/{subtech_id}/{impact}")
+@router.get("/stats/{player_id}/{tech_id}/{subtech_id}/{impact}", response_model=ImpactStatsPublic)
 async def get_stats_impact(
     player_id: int,
     tech_id: int,
@@ -228,13 +230,13 @@ async def get_stats_impact(
     ).all()
 
     # Return stats
-    return {
-        "impact_top": impact_top,
-        "zone_top": zone_top_rows,
-    }
+    return ImpactStatsPublic(
+        impact_top=impact_top,
+        zone_top=zone_top_rows,
+    )
 
 
-@router.get("/plan/{player_id}")
+@router.get("/plan/calculate/{player_id}")
 async def generate_plan_player(
     player_id: int,
     session: CoachSession = Depends(get_session),

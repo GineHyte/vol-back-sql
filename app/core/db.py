@@ -7,7 +7,7 @@ from app.core.config import settings
 
 connect_args = {"check_same_thread": False}
 engine = create_engine(
-    "sqlite:///" + settings.SQLITE_DB, echo=True, connect_args=connect_args
+    "sqlite:///" + settings.SQLITE_DB, echo=False, connect_args=connect_args
 )
 
 @event.listens_for(engine, "connect")

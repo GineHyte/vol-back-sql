@@ -188,7 +188,7 @@ async def create_plan(session: Session, player: int):
 
                 # sort the impact timings by value
                 impact_timings = {
-                    k: v
+                    k.name: v
                     for k, v in sorted(impact_timings.items(), key=lambda item: item[1])
                 }
 
@@ -262,13 +262,19 @@ async def create_plan(session: Session, player: int):
                         )
                     ).all()
 
-                logger.debug(current_impact, str(current_impact))
-                if current_impact not in impact_timings:
+                if current_impact.name not in impact_timings:
                     continue
-                time_for_impact = impact_timings[current_impact]
+                time_for_impact = impact_timings[current_impact.name]
+
+                logger.debug(
+                    f"Current impact: {current_impact.name}, time for impact: {time_for_impact}"
+                )
 
                 while time_for_impact > 0:
                     exercise_counter = 0
+                    logger.debug(
+                        f"Exercise counter: {exercise_counter}, time_for_impact: {time_for_impact}"
+                    )
                     # if we have no time to do this exercise or
                     # we dont have any exercises -> free_time
                     if time_for_impact <= 5 or not exercises:
@@ -292,7 +298,7 @@ async def create_plan(session: Session, player: int):
                                 col(ZoneSum.player) == player,
                                 col(ZoneSum.tech) == tech.tech,
                                 col(ZoneSum.subtech) == subtech.subtech,
-                                col(ZoneSum.impact) == current_impact,
+                                col(ZoneSum.impact) == current_impact.name,
                             )
                         )
                     ).first()
@@ -315,8 +321,8 @@ async def create_plan(session: Session, player: int):
                         plan=plan.id,
                         week=plan_week.week,
                         exercise=exercise.id,
-                        from_zone=int(zone.split("-")[0]),
-                        to_zone=int(zone.split("-")[1]),
+                        from_zone=int(zone.zone.split("-")[0]),
+                        to_zone=int(zone.zone.split("-")[1]),
                     )
                     session.add(exercise_db)
     session.commit()

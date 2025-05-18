@@ -108,3 +108,19 @@ class PlanWeekPublic(SQLModel):
 
 class CoachSessionPublic(CoachSessionBase):
     expires_in: int = Field(..., description="Expiration time in seconds")
+
+class PlayerStatsPublic(SQLModel):
+    player_sum: PlayerSumPublic = Field()
+    tech_top: TechSumPublic = Field()
+
+class TechStatsPublic(SQLModel):
+    tech_top: TechSumPublic = Field()
+    subtech_top: SubtechSumPublic = Field()
+
+class SubtechStatsPublic(SQLModel):
+    subtech_top: SubtechSumPublic = Field()
+    impact_top: ImpactSumPublic = Field()
+
+class ImpactStatsPublic(SQLModel):
+    impact_top: ImpactSumPublic = Field()
+    zone_top: ZoneSumPublic = Field()

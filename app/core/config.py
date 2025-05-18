@@ -61,12 +61,12 @@ class Settings(BaseSettings):
             "uvicorn.error": {"level": "ERROR", "propagate": False},
             "sqlalchemy.engine": {
                 "handlers": ["default"],
-                "level": "INFO",
+                "level": "ERROR",
                 "propagate": False,
             },
             "sqlalchemy.engine.Engine": {
                 "handlers": ["default"],
-                "level": "INFO",
+                "level": "ERROR",
                 "propagate": False,
             },
         },
