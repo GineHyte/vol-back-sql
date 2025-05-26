@@ -286,7 +286,7 @@ async def create_plan(session: Session, player: int):
 
                     # add to planned exercises pool to ensure that we will
                     # not have any dublicated in the future
-                    planned_exercises.append(exercise.id)
+                    #planned_exercises.append(exercise.id)
                     exercise_counter += 1
                     time_for_subtech -= exercise.time_per_exercise
                     time_for_impact -= exercise.time_per_exercise
