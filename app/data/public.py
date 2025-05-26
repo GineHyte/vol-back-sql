@@ -110,17 +110,17 @@ class CoachSessionPublic(CoachSessionBase):
     expires_in: int = Field(..., description="Expiration time in seconds")
 
 class PlayerStatsPublic(SQLModel):
-    player_sum: PlayerSumPublic = Field()
-    tech_top: TechSumPublic = Field()
+    player_sum: List[PlayerSumPublic] = Field()
+    tech_top: List[TechSumPublic] = Field()
 
 class TechStatsPublic(SQLModel):
-    tech_top: TechSumPublic = Field()
-    subtech_top: SubtechSumPublic = Field()
+    tech_top: List[TechSumPublic] = Field()
+    subtech_top: List[SubtechSumPublic] = Field()
 
 class SubtechStatsPublic(SQLModel):
-    subtech_top: SubtechSumPublic = Field()
-    impact_top: ImpactSumPublic = Field()
+    subtech_top: List[SubtechSumPublic] = Field()
+    impact_top: List[ImpactSumPublic] = Field()
 
 class ImpactStatsPublic(SQLModel):
-    impact_top: ImpactSumPublic = Field()
-    zone_top: ZoneSumPublic = Field()
+    impact_top: List[ImpactSumPublic] = Field()
+    zone_top: List[ZoneSumPublic] = Field()
