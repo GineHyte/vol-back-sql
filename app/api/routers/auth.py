@@ -1,4 +1,4 @@
-import secrets
+from hashlib import sha256
 from typing import List
 from datetime import datetime, timedelta
 
@@ -6,11 +6,12 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import select, Session, delete, col
 
 from app.core.db import get_session
-from app.data.create import AuthCreate, TokenCreate
+from app.data.create import AuthCreate, TokenCreate, CoachCreate
 from app.data.db import Coach, CoachSession
 from app.data.public import CoachSessionPublic
 from app.api.deps import get_coach, create_jwt
 from app.core.config import settings
+from app.core.logger import logger
 
 router = APIRouter()
 
@@ -22,22 +23,32 @@ def post_login(*, session: Session = Depends(get_session), auth: AuthCreate):
 
     refresh_token = create_jwt({"username": auth.username, "password": auth.password})
     access_token = create_jwt(
-        {"refresh_token": refresh_token, "timestamp": datetime.timestamp()}
+        {"refresh_token": refresh_token, "timestamp": datetime.now().timestamp()}
     )
-    coach_session = CoachSession(
-        coach=coach.id,
-        access_token=access_token,
-        refresh_token=refresh_token,
-        expires_at=datetime.now()
-        + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
-    session.add(coach_session)
-    session.commit()
+
+    coach_session = session.get(CoachSession, refresh_token)
+    if not coach_session:
+        coach_session = CoachSession(
+            coach=coach.id,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_at=datetime.now()
+            + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        )
+        session.add(coach_session)
+        session.commit()
+        session.refresh(coach_session)
+    else:
+        coach_session.access_token = access_token
+        coach_session.expires_at = datetime.now() + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
+
 
     coach_session_public = CoachSessionPublic(
-        **coach_session.model_dump(exclude=["expires_at", "coach"])
+        **coach_session.model_dump(exclude=["expires_at", "coach"]),
+        expires_in = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
-    coach_session_public.expires_in = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     return coach_session_public
 
 
@@ -56,9 +67,26 @@ def post_token(*, session: Session = Depends(get_session), token: TokenCreate):
 
     coach_session = CoachSessionPublic(
         access_token=create_jwt(
-            {"refresh_token": token.refresh_token, "timestamp": datetime.timestamp()}
+            {"refresh_token": token.refresh_token, "timestamp": datetime.now().timestamp()}
         ),
         refresh_token=token.refresh_token,
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return coach_session
+
+
+@router.post("/register")
+def post_register(*, session: Session = Depends(get_session), new_coach: CoachCreate):
+    """Registers a new coach and returns a session."""
+    if session.exec(select(Coach).where(col(Coach.username) == new_coach.username)).first():
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    coach = Coach(
+        **new_coach.model_dump(exclude={"password"}),
+        password=sha256(new_coach.password.encode()).hexdigest()
+    )
+    session.add(coach)
+    session.commit()
+    session.refresh(coach)
+
+    return post_login(session=session, auth=coach)

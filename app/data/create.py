@@ -10,7 +10,18 @@ class GameCreate(GameBase):
 
 
 class CoachCreate(CoachBase):
-    pass
+    first_name: str
+    last_name: str
+    email: Optional[str] = Field(None, description="Email")
+    phone: Optional[str] = Field(None, description="Phone")
+    username: str
+    password: str
+    minutes_per_week: Optional[float] = Field(
+        default=0, description="Minutes per week for training"
+    )
+    minutes_per_training: Optional[float] = Field(
+        default=0, description="Minutes per training for coach"
+    )
 
 
 class PlayerCreate(PlayerBase):
@@ -26,6 +37,7 @@ class TeamCreate(TeamBase):
 class TeamToPlayerCreate(TeamToPlayerBase):
     player: Optional[int] = Field(None, description="Player id")
     team: Optional[int] = Field(None, description="Team id")
+
 
 class FileCreate(FileBase):
     pass
@@ -50,8 +62,10 @@ class ExerciseCreate(ExerciseBase):
 class UpdateCreate(UpdateBase):
     pass
 
+
 class AuthCreate(AuthBase):
     pass
+
 
 class TokenCreate(SQLModel):
     refresh_token: str = Field(..., description="Refresh Token")
