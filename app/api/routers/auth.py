@@ -57,13 +57,13 @@ def post_token(*, session: Session = Depends(get_session), token: TokenCreate):
     """"""
     coach_session = session.get(CoachSession, token.refresh_token)
     if not coach_session:
-        raise HTTPException("401", "Unauthoritized")
+        raise HTTPException(401, "Unauthoritized")
 
     if session.get(Coach, coach_session.coach).username != token.username:
-        raise HTTPException("401", "Unauthoritized")
+        raise HTTPException(401, "Unauthoritized")
 
     if datetime.now() > coach_session.expires_at:
-        raise HTTPException("401", "Token expired")
+        raise HTTPException(401, "Token expired")
 
     coach_session = CoachSessionPublic(
         access_token=create_jwt(
