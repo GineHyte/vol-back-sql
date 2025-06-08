@@ -180,12 +180,14 @@ async def create_plan(session: Session, player: int):
                     free_time += time_for_subtech
                     continue
 
-                logger.debug("Week: {}".format(week))
-                logger.debug("Tech: {}".format(session.get(Tech, tech.tech).name))
                 logger.debug(
-                    "Subtech: {}".format(session.get(Subtech, subtech.subtech).name)
+                    "Week/Tech/Subtech/Time: {}/{}/{}/{}".format(
+                        week,
+                        session.get(Tech, tech.tech).name,
+                        session.get(Subtech, subtech.subtech).name,
+                        time_for_subtech,
+                    ),
                 )
-                logger.debug("Time: {}".format(time_for_subtech))
 
                 impacts = session.exec(
                     select(ImpactSum).where(
@@ -200,25 +202,14 @@ async def create_plan(session: Session, player: int):
                     logger.debug("No impacts found")
                     continue
 
-                impact_timings = {}
+                existing_impacts = list(map(lambda x: x.impact, impacts))
 
-                for impact in impacts:
-                    impact_timings[impact.impact] = (
-                        settings.MINUTES_IN_WEEK * impact.prozent
-                    )
-
-                # sort the impact timings by value
-                impact_timings = {
-                    k.name: v
-                    for k, v in sorted(impact_timings.items(), key=lambda item: item[1])
-                }
-
-                logger.debug("Impact timings: {}".format(impact_timings))
+                logger.debug("existing_impacts: {}".format(existing_impacts))
 
                 def impact_exists(impact: Impact) -> bool:
-                    return impact.name in impact_timings
+                    return impact in existing_impacts
 
-                time_for_impact = 0
+                exercises = []
                 # get exercises using week and impact as a parameter
                 # also calculate the time for the impact
                 if week % 2 == 1:
@@ -235,11 +226,10 @@ async def create_plan(session: Session, player: int):
                                         )
                                         == True,
                                     ),
-                                    not_(col(Exercise.id).in_(planned_exercises)),
+                                    # not_(col(Exercise.id).in_(planned_exercises)),
                                 )
                             )
                         ).all()
-                        time_for_impact += impact_timings[Impact.FAIL.name]
                     elif impact_exists(Impact.MISTAKE):
                         exercises = session.exec(
                             select(Exercise).where(
@@ -254,11 +244,10 @@ async def create_plan(session: Session, player: int):
                                         col(Exercise.exercises_with_the_ball_in_pairs)
                                         == True,
                                     ),
-                                    not_(col(Exercise.id).in_(planned_exercises)),
+                                    # not_(col(Exercise.id).in_(planned_exercises)),
                                 )
                             )
                         ).all()
-                        time_for_impact += impact_timings[Impact.MISTAKE.name]
                 elif week % 2 == 2:
                     if impact_exists(Impact.EFFICIENCY):
                         exercises = session.exec(
@@ -272,11 +261,10 @@ async def create_plan(session: Session, player: int):
                                         col(Exercise.exercises_with_the_ball_in_groups)
                                         == True,
                                     ),
-                                    not_(col(Exercise.id).in_(planned_exercises)),
+                                    # not_(col(Exercise.id).in_(planned_exercises)),
                                 )
                             )
                         ).all()
-                        time_for_impact += impact_timings[Impact.EFFICIENCY.name]
                     elif impact_exists(Impact.SCORE):
                         exercises = session.exec(
                             select(Exercise).where(
@@ -289,22 +277,22 @@ async def create_plan(session: Session, player: int):
                                         col(Exercise.exercises_in_difficult_conditions)
                                         == True,
                                     ),
-                                    not_(col(Exercise.id).in_(planned_exercises)),
+                                    # not_(col(Exercise.id).in_(planned_exercises)),
                                 )
                             )
                         ).all()
-                        time_for_impact += impact_timings[Impact.SCORE.name]
+
+                logger.debug("Found {} exercises".format(len(exercises)))
 
                 exercise_counter = 0
-                while time_for_impact > 0:
+                while time_for_subtech > 0:
                     logger.debug(
-                        f"Exercise counter: {exercise_counter}, time_for_impact: {time_for_impact}"
+                        f"Exercise counter: {exercise_counter}, time_for_impact: {time_for_subtech}"
                     )
                     # if we have no time to do this exercise or
                     # we dont have any exercises -> free_time
-                    if time_for_impact <= 5 or not exercises:
-                        free_time += time_for_impact
-                        time_for_subtech -= time_for_impact
+                    if time_for_subtech <= 5 or not exercises:
+                        free_time += time_for_subtech
                         logger.debug("<5 -> free_time: {}".format(free_time))
                         break
 
@@ -333,7 +321,6 @@ async def create_plan(session: Session, player: int):
                     # planned_exercises.append(exercise.id)
                     exercise_counter += 1
                     time_for_subtech -= exercise.time_per_exercise
-                    time_for_impact -= exercise.time_per_exercise
                     logger.debug(">5 -> exercise: {}".format(time_for_subtech))
 
                     # calculate best zone
