@@ -1,17 +1,17 @@
 from typing import List
 
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi_pagination import Page, paginate
+from fastapi_pagination import paginate
 from sqlmodel import select, Session, delete, col
 
 from app.core.db import engine, get_session
 from app.data.db import Exercise, Subtech, Tech
+from app.core.logger import logger
 from app.data.utils import Status, NameWithId
 from app.data.update import ExerciseUpdate
 from app.data.create import ExerciseCreate
 from app.data.public import ExercisePublic
-from app.core.logger import logger
-
+from app.api.deps import VolPage
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ router = APIRouter()
 @router.get("/")
 async def get_exercises(
     *, session: Session = Depends(get_session)
-) -> Page[ExercisePublic]:
+) -> VolPage[ExercisePublic]:
     """Get all exercises"""
     db_exercises = session.exec(select(Exercise)).all()
     exersises = []
