@@ -144,9 +144,8 @@ async def create_plan(session: Session, player: int):
     else:
         logger.debug("Plan weeks found", plan_weeks)
     plan = Plan(player=player, start_date=datetime.now(), id=1)
-    for week in range(1, 2):
+    for week in range(1, 13):
         free_time = 0
-        planned_exercises = []
         session.add(plan)
         session.commit()
         plan_week = PlanWeek(player=player, plan=1, week=week)
