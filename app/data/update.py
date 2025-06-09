@@ -22,9 +22,7 @@ class PlayerUpdate(PlayerBase):
 
 
 class GameUpdate(GameBase):
-    name: Optional[str] = Field(None, description="Name")
-    team_a: Optional[str] = Field(..., foreign_key="team.id")
-    team_b: Optional[str] = Field(..., foreign_key="team.id")
+    pass
 
 
 class TeamUpdate(TeamBase):
