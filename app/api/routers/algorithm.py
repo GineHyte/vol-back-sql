@@ -280,6 +280,8 @@ async def get_plan_player_week(
         exercise.tech = NameWithId(
             id=db_exercise.tech, name=session.get(Tech, db_exercise.tech).name
         )
+        exercise.from_zone = plan_exercise.from_zone
+        exercise.to_zone = plan_exercise.to_zone
         plan_week_public.exercises.append(exercise)
 
     return plan_week_public
