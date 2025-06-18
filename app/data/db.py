@@ -53,6 +53,7 @@ class Subtech(SubtechBase, SQLModel, table=True):
 
 class Action(ActionBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
+    game: Optional[int] = Field(None, foreign_key="game.id", ondelete="CASCADE")
     coach: Optional[int] = Field(None, foreign_key="coach.id", ondelete="CASCADE")
 
 

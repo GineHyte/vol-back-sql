@@ -4,8 +4,8 @@
         "plaintext": false,
         "markdown": false,
         "scminput": false,
+        "python": true,
         "rust": false,
-        "python": false,
         "objectscript-class": true
     }
 }

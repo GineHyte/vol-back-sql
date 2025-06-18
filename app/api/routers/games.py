@@ -5,7 +5,7 @@ from fastapi_pagination import Page, paginate
 from sqlmodel import select, Session, delete, col, or_
 
 from app.core.db import engine, get_session
-from app.data.db import Team, Game, Player
+from app.data.db import Team, Game, Player, Action
 from app.data.utils import Status, NameWithId
 from app.data.update import GameUpdate
 from app.data.create import GameCreate
@@ -114,6 +114,12 @@ async def delete_game(
     game = session.get(Game, game_id)
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
+    
+    # Delete related actions
+    session.exec(delete(Action).where(Action.game == game_id))
+    session.commit()
+    
+    # Delete the game
     session.delete(game)
     session.commit()
     return Status(status="success", detail="Game deleted")
@@ -135,3 +141,31 @@ async def update_game(
     session.commit()
 
     return Status(status="success", detail="Team updated")
+
+
+@router.get("/clone/{game_id}")
+async def deep_clone_game(
+    *, session: Session = Depends(get_session), game_id: str
+) -> Status:
+    """Deep clone game"""
+    game = session.get(Game, game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    game_clone = game.model_dump(exclude={"id"})
+    new_game = Game(**game_clone)
+
+    session.add(new_game)
+    session.commit()
+    session.refresh(new_game)
+    logger.debug(f"Cloning game {game_id} with data: {new_game}")
+
+    for action in session.exec(select(Action).where(Action.game == game_id)).all(): 
+        action_clone = action.model_dump(exclude={"id", "game"})
+        action_clone["game"] = new_game.id
+        new_action = Action(**action_clone)
+        session.add(new_action)
+
+    session.commit()
+
+    return Status(status="success", detail="Game cloned successfully")
