@@ -82,9 +82,9 @@ async def create_game(
     """Create new game"""
     game = Game(**new_game.model_dump(exclude={"team_a", "team_b"}))
 
-    if game.from_datetime and game.to_datetime:
-        if game.from_datetime > game.to_datetime:
-            raise HTTPException(status_code=400, detail="Incorrect datetime")
+    if game.from_timestamp and game.to_timestamp:
+        if game.from_timestamp > game.to_timestamp:
+            raise HTTPException(status_code=400, detail="Incorrect timestamp")
 
     team_a = session.get(Team, new_game.team_a)
     team_b = session.get(Team, new_game.team_b)

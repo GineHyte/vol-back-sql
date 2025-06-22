@@ -71,4 +71,4 @@ class Update(UpdateBase, SQLModel, table=True):
 
 class CoachSession(CoachSessionBase, SQLModel, table=True):
     coach: int = Field(..., foreign_key="coach.id", ondelete="CASCADE")
-    expires_at: datetime = Field(..., description="Session expiration date")
+    expires_at: int = Field(..., description="Session expiration timestamp")

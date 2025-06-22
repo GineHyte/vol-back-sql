@@ -1,5 +1,4 @@
 from typing import Optional
-from datetime import datetime
 from uuid import UUID
 
 
@@ -38,18 +37,18 @@ class TeamBase(SQLModel):
 class GameBase(SQLModel):
     name: str = Field(..., description="Name")
     description: Optional[str] = Field(None, description="Description")
-    from_datetime: Optional[datetime] = Field(None, description="Start datetime")
-    to_datetime: Optional[datetime] = Field(None, description="End datetime")
+    from_timestamp: Optional[int] = Field(None, description="Start timestamp")
+    to_timestamp: Optional[int] = Field(None, description="End timestamp")
     team_a: int = Field(..., foreign_key="team.id")
     team_b: int = Field(..., foreign_key="team.id")
 
-    @field_validator("from_datetime", "to_datetime", mode="before")
-    def datetime_validator(cls, v) -> Optional[datetime]:
+    @field_validator("from_timestamp", "to_timestamp", mode="before")
+    def timestamp_validator(cls, v) -> Optional[int]:
         if v is None:
             return None
-        if isinstance(v, datetime):
+        if isinstance(v, int):
             return v
-        return datetime.fromisoformat(v)
+        return int(v.timestamp())
 
 
 class TechBase(SQLModel):
@@ -106,9 +105,9 @@ class TeamToPlayerBase(SQLModel):
 
 
 class UpdateBase(SQLModel):
-    url: str
+    url: str    
     notes: str
-    pub_date: datetime
+    pub_date: int
 
 
 class CoachSessionBase(SQLModel):

@@ -9,7 +9,7 @@ from app.core.db import get_session
 from app.data.create import AuthCreate, TokenCreate, CoachCreate
 from app.data.db import Coach, CoachSession
 from app.data.public import CoachSessionPublic
-from app.api.deps import get_coach, create_jwt
+from app.api.deps import auth_coach, create_jwt
 from app.core.config import settings
 from app.core.logger import logger
 
@@ -19,11 +19,11 @@ router = APIRouter()
 @router.post("/login")
 def post_login(*, session: Session = Depends(get_session), auth: AuthCreate):
     """Sends both access and refresh token to the user."""
-    coach = get_coach(session, auth)
+    coach = auth_coach(session, auth)
 
     refresh_token = create_jwt({"username": auth.username, "password": auth.password})
     access_token = create_jwt(
-        {"refresh_token": refresh_token, "timestamp": datetime.now().timestamp()}
+        {"refresh_token": refresh_token, "timestamp": int(datetime.now().timestamp())}
     )
 
     coach_session = session.get(CoachSession, refresh_token)
@@ -32,22 +32,18 @@ def post_login(*, session: Session = Depends(get_session), auth: AuthCreate):
             coach=coach.id,
             access_token=access_token,
             refresh_token=refresh_token,
-            expires_at=datetime.now()
-            + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+            expires_at=int(datetime.now().timestamp()) + settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
         session.add(coach_session)
         session.commit()
         session.refresh(coach_session)
     else:
         coach_session.access_token = access_token
-        coach_session.expires_at = datetime.now() + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        )
-
+        coach_session.expires_at = int(datetime.now().timestamp()) + settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
     coach_session_public = CoachSessionPublic(
         **coach_session.model_dump(exclude=["expires_at", "coach"]),
-        expires_in = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
     return coach_session_public
 

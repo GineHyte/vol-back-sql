@@ -1,16 +1,15 @@
-from typing import List
-
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import Page, paginate
-from sqlmodel import select, Session, delete, col
+from sqlmodel import select, Session, col
 
-from app.core.db import engine, get_session
-from app.data.db import Team, Game, Action, Player, Subtech, Tech
+from app.core.db import get_session
+from app.data.db import Team, Game, Action, Player, Subtech, Coach
 from app.data.utils import Status, NameWithId
 from app.data.update import ActionUpdate
 from app.data.create import ActionCreate
 from app.data.public import ActionPublic
 from app.core.logger import logger
+from app.api.deps import get_coach
 
 
 router = APIRouter()
@@ -18,13 +17,14 @@ router = APIRouter()
 
 @router.get("/", response_model=Page[ActionPublic])
 async def get_actions(
-    *, session: Session = Depends(get_session), game_id: int
+    *, session: Session = Depends(get_session), game_id: int, coach: Coach = Depends(get_coach)
 ) -> Page[ActionPublic]:
     """Get all actions for a game"""
+    
     actions = []
     if game_id:
         db_actions = session.exec(
-            select(Action).where(col(Action.game) == game_id).order_by(Action.id.desc())
+            select(Action).where(col(Action.game) == game_id, col(Action.coach) == coach.id).order_by(Action.id.desc())
         ).all()
     else:
         db_actions = session.exec(select(Action).order_by(Action.id.desc())).all()
