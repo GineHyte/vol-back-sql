@@ -17,14 +17,14 @@ router = APIRouter()
 
 @router.get("/", response_model=Page[ActionPublic])
 async def get_actions(
-    *, session: Session = Depends(get_session), game_id: int, coach: Coach = Depends(get_coach)
+    *, session: Session = Depends(get_session), game_id: int
 ) -> Page[ActionPublic]:
     """Get all actions for a game"""
     
     actions = []
     if game_id:
         db_actions = session.exec(
-            select(Action).where(col(Action.game) == game_id, col(Action.coach) == coach.id).order_by(Action.id.desc())
+            select(Action).where(col(Action.game) == game_id).order_by(Action.id.desc())
         ).all()
     else:
         db_actions = session.exec(select(Action).order_by(Action.id.desc())).all()
