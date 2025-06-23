@@ -8,6 +8,7 @@ from sqlmodel import select, Session, delete, col
 from app.core.db import get_session
 from app.data.create import AuthCreate, TokenCreate, CoachCreate
 from app.data.db import Coach, CoachSession
+from app.data.utils import Status
 from app.data.public import CoachSessionPublic
 from app.api.deps import auth_coach, create_jwt
 from app.core.config import settings
@@ -85,4 +86,4 @@ def post_register(*, session: Session = Depends(get_session), new_coach: CoachCr
     session.commit()
     session.refresh(coach)
 
-    return post_login(session=session, auth=coach)
+    return Status(status="success", detail="Coach registered successfully")
