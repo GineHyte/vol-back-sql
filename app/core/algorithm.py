@@ -175,7 +175,7 @@ async def create_plan(session: Session, player: int):
                 time_for_subtech = floor(time_for_subtech)
 
                 # check if the whole subtech <= 5 minutes
-                if time_for_subtech <= 5:
+                if time_for_subtech <= 3:
                     free_time += time_for_subtech
                     continue
 
@@ -229,7 +229,7 @@ async def create_plan(session: Session, player: int):
                                 )
                             )
                         ).all()
-                    elif impact_exists(Impact.MISTAKE):
+                    elif impact_exists(Impact.w):
                         exercises = session.exec(
                             select(Exercise).where(
                                 and_(
@@ -247,7 +247,7 @@ async def create_plan(session: Session, player: int):
                                 )
                             )
                         ).all()
-                elif week % 2 == 2:
+                elif week % 2 == 0:
                     if impact_exists(Impact.EFFICIENCY):
                         exercises = session.exec(
                             select(Exercise).where(
@@ -311,6 +311,8 @@ async def create_plan(session: Session, player: int):
                     elif exercise.exercises_in_difficult_conditions:
                         current_impact = Impact.SCORE
 
+                    if not impact_exists(current_impact): continue
+
                     logger.debug(
                         "Current impact for zone algorithm: {}".format(current_impact)
                     )
@@ -334,6 +336,11 @@ async def create_plan(session: Session, player: int):
                         )
                     ).first()
 
+                    logger.debug(
+                        "player: {}\ntech: {}\n subtech: {}\nimpact: {}".format(
+                            player, tech.tech, subtech.subtech, current_impact.name
+                        )
+                    )
                     logger.debug("The best zone for this exercise: {}".format(zone))
 
                     max_id = (
