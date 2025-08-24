@@ -21,6 +21,21 @@ class Settings(BaseSettings):
     LOGFIRE: int = 0
     MINUTES_IN_WEEK: int = 480
 
+    PERCENTAGE_EXERCISES: list = [
+        (70, 0, 30),
+        (70, 0, 30),
+        (35, 35, 30),
+        (35, 35, 30),
+        (30, 40, 30),
+        (30, 40, 30),
+        (25, 45, 30),
+        (25, 45, 30),
+        (20, 50, 30),
+        (20, 50, 30),
+        (15, 55, 30),
+        (15, 55, 30),
+    ]
+
     LOGGING_CONFIG: dict = {
         "version": 1,
         "disable_existing_loggers": False,

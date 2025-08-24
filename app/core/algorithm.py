@@ -120,9 +120,7 @@ def calc_prozent(session: Session, model: SQLModel, total: int, player: int):
 async def create_plan(session: Session, player: int):
     # teardown last plan TODO
     fk_status_result = session.exec(text("PRAGMA foreign_keys;")).scalar_one_or_none()
-    logger.debug(
-        f"PRAGMA foreign_keys status before delete: {fk_status_result}"
-    )  # Ожидаемое значение: 1
+    logger.debug(f"PRAGMA foreign_keys status before delete: {fk_status_result}")
     # teardown last plan if it exists
     existing_plan = session.exec(
         select(Plan).where(and_(col(Plan.player) == player, col(Plan.id) == 1))
@@ -143,8 +141,30 @@ async def create_plan(session: Session, player: int):
         logger.debug("No plan weeks found")
     else:
         logger.debug("Plan weeks found", plan_weeks)
+
+
+
+
+    week_exercises = []  # all the exercises for every week
     plan = Plan(player=player, start_date=datetime.now(), id=1)
+
+    used_techs = session.exec(
+        select(TechSum)
+        .where(col(TechSum.player) == player)
+        .order_by(desc(TechSum.prozent))
+    ).all()
+
+    unused_techs = session.exec(
+        select(TechSum)
+        .where(col(TechSum.player) == player)
+        .order_by(desc(TechSum.prozent))
+    ).all()
+
     for week in range(1, 13):
+        percentages_for_exercises = settings.PERCENTAGE_EXERCISES[week]
+        normal_part = percentages_for_exercises[0] / 100 * settings.MINUTES_IN_WEEK
+        old_part = percentages_for_exercises[1] / 100 * settings.MINUTES_IN_WEEK
+        learning_part = percentages_for_exercises[2] / 100 * settings.MINUTES_IN_WEEK
         free_time = 0
         session.add(plan)
         session.commit()
@@ -154,12 +174,8 @@ async def create_plan(session: Session, player: int):
         session.refresh(plan)
         session.refresh(plan_week)
 
-        for tech in session.exec(
-            select(TechSum)
-            .where(col(TechSum.player) == player)
-            .order_by(desc(TechSum.prozent))
-        ).all():
-            for subtech in session.exec(
+        for tech in used_techs:
+            used_subtechs = session.exec(
                 select(SubtechSum)
                 .where(
                     and_(
@@ -168,13 +184,14 @@ async def create_plan(session: Session, player: int):
                     )
                 )
                 .order_by(desc(SubtechSum.prozent))
-            ).all():
+            ).all()
+            for subtech in used_subtechs:
 
                 time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent
                 free_time += time_for_subtech - floor(time_for_subtech)
                 time_for_subtech = floor(time_for_subtech)
 
-                # check if the whole subtech <= 5 minutes
+                # check if the whole subtech <= 3 minutes
                 if time_for_subtech <= 3:
                     free_time += time_for_subtech
                     continue
@@ -208,12 +225,12 @@ async def create_plan(session: Session, player: int):
                 def impact_exists(impact: Impact) -> bool:
                     return impact in existing_impacts
 
-                exercises = []
+                db_exercises = []
                 # get exercises using week and impact as a parameter
                 # also calculate the time for the impact
                 if week % 2 == 1:
-                    if impact_exists(Impact.FAIL):
-                        exercises = session.exec(
+                    if impact_exists(Impact.FAIL) or impact_exists(Impact.MISTAKE):
+                        db_exercises = session.exec(
                             select(Exercise).where(
                                 and_(
                                     col(Exercise.tech) == tech.tech,
@@ -224,32 +241,16 @@ async def create_plan(session: Session, player: int):
                                             Exercise.exercises_with_the_ball_on_your_own
                                         )
                                         == True,
-                                    ),
-                                    # not_(col(Exercise.id).in_(planned_exercises)),
-                                )
-                            )
-                        ).all()
-                    elif impact_exists(Impact.w):
-                        exercises = session.exec(
-                            select(Exercise).where(
-                                and_(
-                                    col(Exercise.tech) == tech.tech,
-                                    col(Exercise.subtech) == subtech.subtech,
-                                    or_(
-                                        col(
-                                            Exercise.exercises_with_the_ball_on_your_own
-                                        )
-                                        == True,
                                         col(Exercise.exercises_with_the_ball_in_pairs)
                                         == True,
+                                        # not_(col(Exercise.id).in_(planned_exercises)),
                                     ),
-                                    # not_(col(Exercise.id).in_(planned_exercises)),
                                 )
                             )
                         ).all()
                 elif week % 2 == 0:
-                    if impact_exists(Impact.EFFICIENCY):
-                        exercises = session.exec(
+                    if impact_exists(Impact.EFFICIENCY) or impact_exists(Impact.SCORE):
+                        db_exercises = session.exec(
                             select(Exercise).where(
                                 and_(
                                     col(Exercise.tech) == tech.tech,
@@ -257,45 +258,31 @@ async def create_plan(session: Session, player: int):
                                     or_(
                                         col(Exercise.exercises_with_the_ball_in_pairs)
                                         == True,
-                                        col(Exercise.exercises_with_the_ball_in_groups)
-                                        == True,
-                                    ),
-                                    # not_(col(Exercise.id).in_(planned_exercises)),
-                                )
-                            )
-                        ).all()
-                    elif impact_exists(Impact.SCORE):
-                        exercises = session.exec(
-                            select(Exercise).where(
-                                and_(
-                                    col(Exercise.tech) == tech.tech,
-                                    col(Exercise.subtech) == subtech.subtech,
-                                    or_(
                                         col(Exercise.exercises_with_the_ball_in_groups)
                                         == True,
                                         col(Exercise.exercises_in_difficult_conditions)
                                         == True,
                                     ),
-                                    # not_(col(Exercise.id).in_(planned_exercises)),
                                 )
                             )
                         ).all()
 
-                logger.debug("Found {} exercises".format(len(exercises)))
+                logger.debug("Found {} exercises".format(len(db_exercises)))
 
                 exercise_counter = 0
+                exercises = []
                 while time_for_subtech > 0:
                     logger.debug(
                         f"Exercise counter: {exercise_counter}, time_for_impact: {time_for_subtech}"
                     )
                     # if we have no time to do this exercise or
                     # we dont have any exercises -> free_time
-                    if time_for_subtech <= 5 or not exercises:
+                    if time_for_subtech <= 3 or not db_exercises:
                         free_time += time_for_subtech
-                        logger.debug("<5 -> free_time: {}".format(free_time))
+                        logger.debug("<3 -> free_time: {}".format(free_time))
                         break
 
-                    exercise: Exercise = exercises.pop()
+                    exercise: Exercise = db_exercises.pop()
 
                     # is shifted in 1 in the right direction
                     # the harder one is in prio
@@ -311,7 +298,8 @@ async def create_plan(session: Session, player: int):
                     elif exercise.exercises_in_difficult_conditions:
                         current_impact = Impact.SCORE
 
-                    if not impact_exists(current_impact): continue
+                    if not impact_exists(current_impact):
+                        continue
 
                     logger.debug(
                         "Current impact for zone algorithm: {}".format(current_impact)
@@ -355,7 +343,7 @@ async def create_plan(session: Session, player: int):
                         ).first()
                         or 0
                     )
-                    exercise_db = PlanExercise(
+                    db_exercise = PlanExercise(
                         id=max_id + 1,
                         player=player,
                         plan=plan.id,
@@ -364,7 +352,14 @@ async def create_plan(session: Session, player: int):
                         from_zone=int(zone.zone.split("-")[0]),
                         to_zone=int(zone.zone.split("-")[1]),
                     )
-                    session.add(exercise_db)
+
+
+                    if exercise.exercises_for_learning == True:
+                        learning_part += exercise.time_per_exercise
+                    elif 
+                    exercises.append(db_exercise)
+                    session.add(db_exercise)
+                week_exercises.append(exercises)
     session.commit()
     free_time = floor(free_time)
     logger.debug("=== FREE TIME ===")
