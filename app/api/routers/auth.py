@@ -92,7 +92,7 @@ def post_token(*, session: Session = Depends(get_session), token: TokenCreate):
         raise HTTPException(401, "Unauthorized")
 
     # Check if the session has expired
-    if datetime.now() > coach_session.expires_at:
+    if datetime.now().timestamp() > coach_session.expires_at:
         raise HTTPException(401, "Token expired")
 
     # Create new session data with refreshed access token
