@@ -50,7 +50,7 @@ class ActionPublic(ActionBase):
 
 class ExercisePublic(ExerciseBase):
     id: int = Field(None, description="Exercise ID")
-    exercise: List["ExerciseToSubtechPublic"] = Field(
+    subtechs: List["ExerciseToSubtechPublic"] = Field(
             [], description="List of ExerciseToSubtech relations"
         )
 

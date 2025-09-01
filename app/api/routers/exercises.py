@@ -5,12 +5,12 @@ from fastapi_pagination import paginate
 from sqlmodel import select, Session, delete, col
 
 from app.core.db import engine, get_session
-from app.data.db import Exercise, Subtech, Tech
+from app.data.db import Exercise, Subtech, Tech, ExerciseToSubtech
 from app.core.logger import logger
 from app.data.utils import Status, NameWithId
 from app.data.update import ExerciseUpdate
 from app.data.create import ExerciseCreate
-from app.data.public import ExercisePublic
+from app.data.public import ExercisePublic, ExerciseToSubtechPublic
 from app.api.deps import VolPage
 
 router = APIRouter()
@@ -25,12 +25,11 @@ async def get_exercises(
     exersises = []
     for db_exercise in db_exercises:
         exercise = ExercisePublic(**db_exercise.model_dump(exclude=["subtech", "tech"]))
-        exercise.subtech = NameWithId(
-            id=db_exercise.subtech, name=session.get(Subtech, db_exercise.subtech).name
-        )
-        exercise.tech = NameWithId(
-            id=db_exercise.tech, name=session.get(Tech, db_exercise.tech).name
-        )
+        exercise.subtechs = []
+        for exr_to_sub in db_exercise.subtechs:
+            subtech = NameWithId(id=exr_to_sub.subtech.id, name=exr_to_sub.subtech.name)
+            exr_to_sub_public = ExerciseToSubtechPublic(subtech=subtech)
+            exercise.subtechs.append(exr_to_sub_public)
         exersises.append(exercise)
     return paginate(exersises)
 
@@ -58,12 +57,11 @@ async def get_exercise(
     if not db_exercise:
         raise HTTPException(status_code=404, detail="Exercise not found")
     exercise = ExercisePublic(**db_exercise.model_dump(exclude=["subtech", "tech"]))
-    exercise.subtech = NameWithId(
-        id=db_exercise.subtech, name=session.get(Subtech, db_exercise.subtech).name
-    )
-    exercise.tech = NameWithId(
-        id=db_exercise.tech, name=session.get(Tech, db_exercise.tech).name
-    )
+    exercise.subtechs = []
+    for exr_to_sub in db_exercise.subtechs:
+        subtech = NameWithId(id=exr_to_sub.subtech.id, name=exr_to_sub.subtech.name)
+        exr_to_sub_public = ExerciseToSubtechPublic(subtech=subtech)
+        exercise.subtechs.append(exr_to_sub_public)
     return exercise
 
 
