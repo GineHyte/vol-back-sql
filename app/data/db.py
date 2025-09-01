@@ -8,8 +8,12 @@ from app.data.base import *
 
 
 class TeamToPlayer(TeamToPlayerBase, SQLModel, table=True):
-    team_id: int = Field(None, foreign_key="team.id", primary_key=True, ondelete="CASCADE")
-    player_id: int = Field(None, foreign_key="player.id", primary_key=True, ondelete="CASCADE")
+    team_id: int = Field(
+        None, foreign_key="team.id", primary_key=True, ondelete="CASCADE"
+    )
+    player_id: int = Field(
+        None, foreign_key="player.id", primary_key=True, ondelete="CASCADE"
+    )
     amplua: Amplua
 
     team: "Team" = Relationship(back_populates="players")
@@ -49,6 +53,9 @@ class Tech(TechBase, SQLModel, table=True):
 class Subtech(SubtechBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
     coach: Optional[int] = Field(None, foreign_key="coach.id", ondelete="CASCADE")
+    exercises: List["ExerciseToSubtech"] = Relationship(
+        back_populates="subtech", cascade_delete=True
+    )
 
 
 class Action(ActionBase, SQLModel, table=True):
@@ -60,6 +67,9 @@ class Action(ActionBase, SQLModel, table=True):
 class Exercise(ExerciseBase, SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
     coach: Optional[int] = Field(None, foreign_key="coach.id", ondelete="CASCADE")
+    subtechs: List["ExerciseToSubtech"] = Relationship(
+        back_populates="exercise", cascade_delete=True
+    )
 
 
 class File(FileBase, SQLModel, table=True):
@@ -69,6 +79,18 @@ class File(FileBase, SQLModel, table=True):
 class Update(UpdateBase, SQLModel, table=True):
     name: str = Field(..., primary_key=True)
 
+
 class CoachSession(CoachSessionBase, SQLModel, table=True):
     coach: int = Field(..., foreign_key="coach.id", ondelete="CASCADE")
     expires_at: int = Field(..., description="Session expiration timestamp")
+
+
+class ExerciseToSubtech(ExerciseToSubtechBase, SQLModel, table=True):
+    exercise_id: int = Field(
+        None, foreign_key="exercise.id", primary_key=True, ondelete="CASCADE"
+    )
+    subtech_id: int = Field(
+        None, foreign_key="subtech.id", primary_key=True, ondelete="CASCADE"
+    )
+    exercise: Exercise = Relationship(back_populates="subtechs")
+    subtech: Subtech = Relationship(back_populates="exercises")

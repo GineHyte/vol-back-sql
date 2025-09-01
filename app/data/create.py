@@ -70,3 +70,8 @@ class AuthCreate(AuthBase):
 class TokenCreate(SQLModel):
     refresh_token: str = Field(..., description="Refresh Token")
     username: str = Field(..., description="Coach username")
+
+
+class ExerciseToSubtechCreate(ExerciseToSubtechBase):
+    exercise: Optional[int] = Field(None, description="Exercise id")
+    subtech: Optional[int] = Field(None, description="Subtech id")

@@ -50,8 +50,9 @@ class ActionPublic(ActionBase):
 
 class ExercisePublic(ExerciseBase):
     id: int = Field(None, description="Exercise ID")
-    subtech: Optional[NameWithId] = Field(None, description="Subtech id")
-    tech: Optional[NameWithId] = Field(None, description="Tech id")
+    exercise: List["ExerciseToSubtechPublic"] = Field(
+            [], description="List of ExerciseToSubtech relations"
+        )
 
 
 class TeamToPlayerPublic(TeamToPlayerBase):
@@ -124,3 +125,7 @@ class SubtechStatsPublic(SQLModel):
 class ImpactStatsPublic(SQLModel):
     impact_top: ImpactSumPublic = Field()
     zone_top: List[ZoneSumPublic] = Field()
+
+class ExerciseToSubtechPublic(ExerciseToSubtechBase):
+    exercise: Optional[NameWithId] = Field(None, description="Exercise id with name")
+    subtech: Optional[NameWithId] = Field(None, description="Subtech id with name")

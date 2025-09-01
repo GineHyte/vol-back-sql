@@ -76,8 +76,6 @@ class ActionBase(SQLModel):
 class ExerciseBase(SQLModel):
     name: str
     description: Optional[str]
-    tech: int = Field(..., foreign_key="tech.id", ondelete="CASCADE")
-    subtech: int = Field(..., foreign_key="subtech.id", ondelete="CASCADE")
     image_url: Optional[str] = Field(None, description="Image URL")
     video_url: Optional[str] = Field(None, description="Video URL")
     difficulty: int
@@ -117,3 +115,9 @@ class CoachSessionBase(SQLModel):
 class AuthBase(SQLModel):
     username: str = Field(..., description="Username")
     password: str = Field(..., description="Password")
+
+
+class ExerciseToSubtechBase(SQLModel):
+    exercise: int = Field(..., foreign_key="exercise.id", ondelete="CASCADE")
+    subtech: int = Field(..., foreign_key="subtech.id", ondelete="CASCADE")
+    
