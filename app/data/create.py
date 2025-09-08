@@ -56,7 +56,7 @@ class SubtechCreate(SubtechBase):
 
 
 class ExerciseCreate(ExerciseBase):
-    exercises: List["ExerciseToSubtechCreate"] = Field(
+    subtechs: List["ExerciseToSubtechCreate"] = Field(
         ..., description="List of ExerciseToSubtech relations"
     )
 

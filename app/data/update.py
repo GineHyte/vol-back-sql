@@ -43,8 +43,15 @@ class SubtechUpdate(SubtechBase):
     pass
 
 
+class ExerciseToSubtechUpdate(ExerciseToSubtechBase):
+    exercise: Optional[int] = Field(None, description="Exercise id")
+    subtech: Optional[int] = Field(None, description="Subtech id")
+
+
 class ExerciseUpdate(ExerciseBase):
-    pass
+    subtechs: Optional[List[ExerciseToSubtechUpdate]] = Field(
+        None, description="Relation between Exercise and Subtech (n to m)"
+    )
 
 
 class UpdateUpdate(UpdateBase):

@@ -27,3 +27,11 @@ class Impact(Enum):
 class NameWithId(SQLModel):
     id: Optional[int] = Field(None, description="ID")
     name: Optional[str] = Field(None, description="Name")
+    
+    def __hash__(self):
+        return hash((self.id, self.name))
+    
+    def __eq__(self, other):
+        if not isinstance(other, NameWithId):
+            return False
+        return self.id == other.id and self.name == other.name
