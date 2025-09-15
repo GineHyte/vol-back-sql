@@ -70,25 +70,28 @@ async def create_exercise(
     *, session: Session = Depends(get_session), new_exercise: ExerciseCreate
 ) -> Status:
     """Create new exercise"""
-    # Extract subtechs before creating the exercise to avoid relationship issues
-    subtechs_data = new_exercise.subtechs
-    exercise_data = new_exercise.model_dump(exclude={"subtechs"})
-    
-    # Create the exercise without the subtechs relationship
-    exercise = Exercise(**exercise_data)
-    session.add(exercise)
-    session.commit()
-    session.refresh(exercise)
-    
-    # Now create the ExerciseToSubtech relationships
-    
-    for subtech_data in subtechs_data:
-        exercise_to_subtech = ExerciseToSubtech(
-            exercise_id=exercise.id,
-            subtech_id=subtech_data.subtech
-        )
-        session.add(exercise_to_subtech)
-    
+    db_exercise = Exercise(**new_exercise.model_dump(exclude={"subtechs"}))
+    # get new id
+    new_id = (
+        session.exec(select(col(Exercise.id)).order_by(Exercise.id.desc())).first() or 0
+    ) + 1
+    logger.debug("Creating new exersice with id %s", new_id)
+    subtech_ids = list(map(lambda x: x.subtech, new_exercise.subtechs))
+
+    if len(set(subtech_ids)) != len(subtech_ids):
+        raise HTTPException(status_code=404, detail="Subtechs must be unique")
+
+    statement = select(Subtech).where(Subtech.id.in_(subtech_ids))
+    subtechs: List[Subtech] = session.exec(statement).all()
+
+    if len(subtechs) != len(subtech_ids) or None in subtechs:
+        raise HTTPException(status_code=404, detail="Subtech not found")
+
+    for subtech in subtech_ids:
+        relation = ExerciseToSubtech(exercise_id=new_id, subtech_id=subtech)
+        session.add(relation)
+        logger.debug("creating new relation: %s - %s", new_id, subtech)
+    session.add(db_exercise)
     session.commit()
     return Status(status="success", detail="Exercise created")
 
@@ -119,34 +122,37 @@ async def update_exercise(
         raise HTTPException(status_code=404, detail="Exercise not found")
 
     # Update exercise fields (excluding subtechs relationship)
-    for field, value in new_exercise.model_dump(exclude_none=True, exclude={"subtechs"}).items():
+    for field, value in new_exercise.model_dump(
+        exclude_none=True, exclude={"subtechs"}
+    ).items():
         setattr(exercise, field, value)
 
     # Handle subtechs relationship if provided
     if new_exercise.subtechs is not None:
         # Delete existing relationships
         existing_relations = session.exec(
-            select(ExerciseToSubtech).where(ExerciseToSubtech.exercise_id == exercise.id)
+            select(ExerciseToSubtech).where(
+                ExerciseToSubtech.exercise_id == exercise.id
+            )
         ).all()
         for relation in existing_relations:
             session.delete(relation)
-        
+
         # Create new relationships
         for subtech_data in new_exercise.subtechs:
             # Handle both cases: NameWithId object or direct integer
-            if hasattr(subtech_data, 'subtech') and subtech_data.subtech:
+            if hasattr(subtech_data, "subtech") and subtech_data.subtech:
                 if isinstance(subtech_data.subtech, NameWithId):
                     subtech_id = subtech_data.subtech.id
                 else:
                     subtech_id = subtech_data.subtech
             else:
                 # If it's the old format with direct subtech field
-                subtech_id = getattr(subtech_data, 'subtech', None)
-            
+                subtech_id = getattr(subtech_data, "subtech", None)
+
             if subtech_id:
                 exercise_to_subtech = ExerciseToSubtech(
-                    exercise_id=exercise.id,
-                    subtech_id=subtech_id
+                    exercise_id=exercise.id, subtech_id=subtech_id
                 )
                 session.add(exercise_to_subtech)
 
