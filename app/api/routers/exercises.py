@@ -56,7 +56,7 @@ async def get_exercise(
     db_exercise = session.get(Exercise, exercise_id)
     if not db_exercise:
         raise HTTPException(status_code=404, detail="Exercise not found")
-    exercise = ExercisePublic(**db_exercise.model_dump(exclude=["subtech", "tech"]))
+    exercise = ExercisePublic(**db_exercise.model_dump(exclude=["subtechs"]))
     exercise.subtechs = []
     for exr_to_sub in db_exercise.subtechs:
         subtech = NameWithId(id=exr_to_sub.subtech.id, name=exr_to_sub.subtech.name)

@@ -7,7 +7,7 @@ from app.data.db import *
 from app.data.public import *
 from app.core.logger import logger
 from app.data.utils import Status, Impact
-from app.core.algorithm import calculate_sums, create_plan
+from app.core.algorithm import calculate_sums, PlanCreator
 
 router = APIRouter()
 
@@ -244,7 +244,7 @@ async def generate_plan_player(
     player = session.get(Player, player_id)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
-    await create_plan(session, player_id)
+    await PlanCreator(session, player_id).create_plan()
     return Status(status="success", detail="Plan generated successfully")
 
 
@@ -273,13 +273,12 @@ async def get_plan_player_week(
         )
     ).all():
         db_exercise = session.get(Exercise, plan_exercise.exercise)
-        exercise = ExercisePublic(**db_exercise.model_dump(exclude=["subtech", "tech"]))
-        exercise.subtech = NameWithId(
-            id=db_exercise.subtech, name=session.get(Subtech, db_exercise.subtech).name
-        )
-        exercise.tech = NameWithId(
-            id=db_exercise.tech, name=session.get(Tech, db_exercise.tech).name
-        )
+        exercise = ExercisePublic(**db_exercise.model_dump(exclude=["subtechs"]))
+        exercise.subtechs = []
+        for exr_to_sub in db_exercise.subtechs:
+            subtech = NameWithId(id=exr_to_sub.subtech.id, name=exr_to_sub.subtech.name)
+            exr_to_sub_public = ExerciseToSubtechPublic(subtech=subtech)
+            exercise.subtechs.append(exr_to_sub_public)
         exercise.from_zone = plan_exercise.from_zone
         exercise.to_zone = plan_exercise.to_zone
         plan_week_public.exercises.append(exercise)
