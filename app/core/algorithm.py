@@ -176,7 +176,7 @@ class PlanCreator:
 
         finally:
             # Re-enable foreign keys regardless of success or failure
-            self.session.exec(text("PRAGMA foreign_keys = ON"))
+            # self.session.exec(text("PRAGMA foreign_keys = ON"))
             logger.debug("Foreign keys re-enabled after plan creation")
 
         return self.plan
