@@ -24,14 +24,15 @@ from app.core.config import settings
 
 # TODO: types
 
+
 class PlanCreator:
     """
     Creates training plans for players based on their historical performance data.
-    
+
     The PlanCreator analyzes a player's technique usage patterns, impact effectiveness,
     and zone performance to generate a structured 13-week training plan with exercises
     tailored to their strengths and weaknesses.
-    
+
     Attributes:
         session (Session): Database session for data operations
         player (int): Player ID for whom the plan is being created
@@ -42,7 +43,7 @@ class PlanCreator:
     def __init__(self, session: Session, player: int):
         """
         Initialize the PlanCreator with database session and player ID.
-        
+
         Args:
             session (Session): SQLModel database session
             player (int): Unique identifier for the player
@@ -54,24 +55,30 @@ class PlanCreator:
     def init_constraints(self):
         """
         Initialize planning constraints and configuration values.
-        
+
         Sets up the basic parameters for plan generation including
         the number of weeks and default plan ID.
         """
         self.WEEK_COUNT = 13
         self.DEFAULT_PLAN_ID = 1
 
+        # Borders
+        self.BORDER_WEEK_MINUTES = 3
+        self.BORDER_TECH_MINUTES = 3
+        self.BORDER_SUBTECH_MINUTES = 3
+        self.BORDER_PARTS_MINUTES = 3
+
     async def init_internal_variables(self):
         """
         Initialize internal variables and fetch player data from database.
-        
+
         This method:
         - Fetches used and unused techniques for the player
         - Creates a new plan record in the database
         - Initializes loop control flags
         - Sets up timing variables for different exercise categories
         - Prepares exercise tracking lists
-        
+
         The method distinguishes between used techniques (those the player has
         performed) and unused techniques to create appropriate training focus.
         """
@@ -81,12 +88,9 @@ class PlanCreator:
             .order_by(desc(TechSum.prozent))
         ).all()
         self.unused_techs = self.session.exec(
-            select(TechSum)
-            .where(
-                and_(col(TechSum.player) == self.player),
-                not_(col(TechSum.tech).in_(map(lambda x: x.tech, self.used_techs))),
+            select(Tech).where(
+                col(Tech.id).in_(map(lambda x: x.tech, self.used_techs)),
             )
-            .order_by(desc(TechSum.prozent))
         ).all()
         self.plan = Plan(
             player=self.player, start_date=datetime.now(), id=self.DEFAULT_PLAN_ID
@@ -108,110 +112,125 @@ class PlanCreator:
         self._time_for_normal_part = 0
         self._time_for_old_part = 0
         self._time_for_learning_part = 0
-        self._time_for_week_free = 0 # free time in week
+        self._time_for_week_free = 0  # free time in week
 
         # lists
         self._week_exercises = []
-        self._exercises = [] # 2d for every week
+        self._exercises = []  # 2d for every week
 
     async def create_plan(self):
         """
         Create a complete training plan for the player.
-        
+
         This is the main orchestration method that:
         1. Tears down any existing plan
         2. Initializes internal variables
         3. Processes each week of the 13-week plan
         4. Commits the final plan to the database
-        
+
         Returns:
             Plan: The created plan object with all associated exercises
-            
+
         The method processes weeks sequentially, calculating exercise distributions
         based on predefined percentages for normal, old, and learning exercises.
         """
-        # teardown first
-        await self.teardown()
+        # Disable foreign keys for the duration of plan creation
+        self.session.exec(text("PRAGMA foreign_keys = OFF"))
+        logger.debug("Foreign keys disabled for plan creation")
 
-        # init varialbes s. function
-        await self.init_internal_variables()
+        try:
+            # teardown first
+            await self.teardown()
 
-        for week in range(1, self.WEEK_COUNT):
-            # check end_the_loop flag
-            if self._end_week_loop:
-                break
-            # init plan variables
-            self._time_for_week_free = 0  # free_time
-            self._week_exercises = []  # week_exercises
-            percentages_for_exercises = settings.PERCENTAGE_EXERCISES[week - 1]
-            self._time_for_normal_part = percentages_for_exercises[0] / 100 * settings.MINUTES_IN_WEEK  # normal_part
-            self._time_for_old_part= percentages_for_exercises[1] / 100 * settings.MINUTES_IN_WEEK  # old_part
-            self._time_for_learning_part = percentages_for_exercises[2] / 100 * settings.MINUTES_IN_WEEK  # learning_part
-            plan_week = PlanWeek(
-                player=self.player, plan=self.DEFAULT_PLAN_ID, week=week
-            )
-            self.session.add(plan_week)
+            # init varialbes s. function
+            await self.init_internal_variables()
+
+            for week in range(1, self.WEEK_COUNT):
+                # check end_the_loop flag
+                if self._end_week_loop:
+                    break
+                # init plan variables
+                self._time_for_week = settings.MINUTES_IN_WEEK
+                self._time_for_week_free = 0  # free_time
+                self._week_exercises = []  # week_exercises
+                percentages_for_exercises = settings.PERCENTAGE_EXERCISES[week - 1]
+                self._time_for_normal_part = (
+                    percentages_for_exercises[0] / 100 * settings.MINUTES_IN_WEEK
+                )  # normal_part
+                self._time_for_old_part = (
+                    percentages_for_exercises[1] / 100 * settings.MINUTES_IN_WEEK
+                )  # old_part
+                self._time_for_learning_part = (
+                    percentages_for_exercises[2] / 100 * settings.MINUTES_IN_WEEK
+                )  # learning_part
+                plan_week = PlanWeek(
+                    player=self.player, plan=self.DEFAULT_PLAN_ID, week=week
+                )
+                self.session.add(plan_week)
+                self.session.commit()
+                self.session.refresh(plan_week)
+
+                await self.process_week(plan_week)
+
             self.session.commit()
-            self.session.refresh(plan_week)
 
-            await self.process_week(plan_week)
+        finally:
+            # Re-enable foreign keys regardless of success or failure
+            self.session.exec(text("PRAGMA foreign_keys = ON"))
+            logger.debug("Foreign keys re-enabled after plan creation")
 
-        self.session.commit()
         return self.plan
 
     async def process_week(self, plan_week: PlanWeek):
         """
         Process a single week of the training plan.
-        
+
         Args:
             plan_week (PlanWeek): The week being processed
-            
+
         This method:
         - Processes all used techniques first (player's strengths)
         - Processes unused techniques second (areas for improvement)
         - Handles old exercises from previous weeks for reinforcement
         - Calculates and logs free time remaining in the week
-        
+
         The week processing follows a specific order to prioritize the player's
         existing skills while introducing new techniques for development.
         """
+
+        self._end_tech_loop = False
         for tech in self.used_techs:
             # check end_the_loop flag
             if self._end_tech_loop:
                 break
-            logger.info("> Processing used tech: {}".format(tech.tech))
             await self.process_used_tech(plan_week, tech)
+        used_count = len(self._week_exercises)
 
+        self._end_tech_loop = False
         for tech in self.unused_techs:
             # check end_the_loop flag
             if self._end_tech_loop:
                 break
-            logger.info("> Processing unused tech: {}".format(tech.tech))
             await self.process_unused_tech(plan_week, tech)
 
-        self._exercises.append(self._week_exercises)
-
         if plan_week.week > 1:
-            last_week_exercises = self._exercises[plan_week.week - 2]  # Fix: week-2 for 0-based indexing
+            last_week_exercises = self._exercises[
+                plan_week.week - 2
+            ]  # Fix: week-2 for 0-based indexing
             len_week_exercises = len(last_week_exercises)
-            logger.debug("> last_week_exercises: {}".format(last_week_exercises))
             if len_week_exercises:
-                while self._time_for_old_part > 3:
+                while self._time_for_old_part > self.BORDER_PARTS_MINUTES:
                     if len_week_exercises == 0:  # Safety check
                         break
-                        
-                    selected_exercise = last_week_exercises[randint(0, len_week_exercises - 1)]
+
+                    selected_exercise = last_week_exercises[
+                        randint(0, len_week_exercises - 1)
+                    ]
                     old_exercise = selected_exercise[0]
                     exercise_time = selected_exercise[1]
-                    
-                    # Validate the exercise still exists in database
-                    existing_exercise = self.session.get(Exercise, old_exercise.exercise)
-                    if not existing_exercise:
-                        logger.warning(f"Exercise {old_exercise.exercise} no longer exists, skipping")
-                        continue
-                    
+
                     self._time_for_old_part -= exercise_time
-                    
+
                     max_id = (
                         self.session.exec(
                             select(func.max(PlanExercise.id)).where(
@@ -224,7 +243,7 @@ class PlanCreator:
                         ).first()
                         or 0
                     )
-                    
+
                     try:
                         # Create a new instance instead of reusing the old one
                         new_exercise = PlanExercise(
@@ -237,29 +256,36 @@ class PlanCreator:
                             to_zone=old_exercise.to_zone,
                         )
                         self.session.add(new_exercise)
+                        time_per_exercise = self.session.get(Exercise, new_exercise.exercise).time_per_exercise
+                        self._week_exercises.append((new_exercise, time_per_exercise))
+                        self._time_for_week_free -= time_per_exercise
                         self.session.flush()  # Flush to catch constraint violations early
                     except Exception as e:
                         logger.error(f"Failed to create old PlanExercise: {e}")
                         self.session.rollback()
                         continue
-
+        logger.info("time used: {}/{}".format(sum(map(lambda x: x[1], self._week_exercises)), settings.MINUTES_IN_WEEK))  
+        self._exercises.append(self._week_exercises)
         self._time_for_week_free = floor(self._time_for_week_free)
-        logger.debug("- FREE TIME: {}".format(self._time_for_week_free))
+        logger.debug(
+            "- week: {}, found exercises: {}".format(
+                plan_week.week, len(self._week_exercises)
+            )
+        )
 
-    async def process_used_tech(
-        self, plan_week: PlanWeek, tech: TechBase
-    ):
+    async def process_used_tech(self, plan_week: PlanWeek, tech: TechBase):
         """
         Process a specific technique within a week.
-        
+
         Args:
             plan_week (PlanWeek): The current week being processed
             tech (Tech): The technique to process
-            
+
         This method iterates through all subtechniques for the given technique,
-        routing each to either used subtech processing based on the player's 
+        routing each to either used subtech processing based on the player's
         history with the technique.
         """
+        self._end_subtech_loop = False
         for subtech in self.session.exec(
             select(SubtechSum)
             .where(
@@ -270,66 +296,62 @@ class PlanCreator:
             )
             .order_by(desc(SubtechSum.prozent))
         ).all():
-            if self._end_subtech_loop: break
-            logger.info("-> Processing used subtech: {}".format(subtech.subtech))
+            if self._end_subtech_loop:
+                break
             await self.process_used_subtech(plan_week, tech, subtech)
 
-    async def process_unused_tech(
-        self, plan_week: PlanWeek, tech: TechBase
-    ):
+    async def process_unused_tech(self, plan_week: PlanWeek, tech: Tech):
         """
         Process a specific technique within a week.
-        
+
         Args:
             plan_week (PlanWeek): The current week being processed
             tech (Tech): The technique to process
-            
+
         This method iterates through all subtechniques for the given technique,
-        routing each to either unused subtech processing based on the player's 
+        routing each to either unused subtech processing based on the player's
         history with the technique.
         """
-        for subtech in self.session.exec(
-            select(Subtech)
-            .where(
-                col(Subtech.tech) == tech.tech,
+        self._end_subtech_loop = False
+        subtechs = self.session.exec(
+            select(Subtech).where(
+                col(Subtech.tech) == tech.id,
             )
-        ).all():
-            if self._end_subtech_loop: break
-            logger.info("-> Processing unused subtech: {}".format(subtech.subtech))
-            await self.process_unused_subtech(plan_week, tech, subtech)
+        ).all()
+        for subtech in subtechs:
+            if self._end_subtech_loop:
+                break
+            await self.process_unused_subtech(plan_week, tech, subtech, len(subtechs))
 
     async def process_used_subtech(
         self, plan_week: PlanWeek, tech: Tech, subtech: Subtech
     ):
         """
         Process a subtechnique that the player has used before.
-        
+
         Args:
             plan_week (PlanWeek): Current week being processed
             tech (Tech): Parent technique
             subtech (Subtech): Subtechnique to process
-            
+
         This method:
         - Calculates time allocation based on the player's usage percentage
         - Selects exercises based on week parity and impact types
         - Focuses on non-learning exercises (reinforcement/improvement)
         - Creates PlanExercise records for selected exercises
         - Manages time constraints and loop termination conditions
-        
+
         Exercise selection varies by week:
         - Odd weeks: Focus on FAIL/MISTAKE impacts with simulation and ball exercises
         - Even weeks: Focus on EFFICIENCY/SCORE impacts with pairs/groups/difficult conditions
         """
-        self._time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent  # time_for_subtech
-        self._time_for_week_free += self._time_for_subtech - floor(self._time_for_subtech)  # free_time
-        self._time_for_subtech = floor(self._time_for_subtech)  # time_for_subtech
+        self._time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent
+        self._time_for_week_free += self._time_for_subtech - floor(
+            self._time_for_subtech
+        )
+        self._time_for_subtech = floor(self._time_for_subtech)
 
-        # check if the whole subtech <= 3 minutes
-        logger.debug("\t_time_for_subtech: {}".format(self._time_for_subtech))
-        logger.debug("\tsubtech.prozent: {}".format(subtech.prozent))
-        if self._time_for_subtech <= 3:
-            self._time_for_week_free += self._time_for_subtech
-            return
+        self.check_borders()
 
         impacts = self.session.exec(
             select(ImpactSum).where(
@@ -340,7 +362,6 @@ class PlanCreator:
                 )
             )
         ).all()
-        logger.debug("\timpacts len: {}".format(len(impacts)))
         if not impacts:
             return
 
@@ -367,7 +388,6 @@ class PlanCreator:
                                 col(Exercise.exercises_with_the_ball_on_your_own)
                                 == True,
                                 col(Exercise.exercises_with_the_ball_in_pairs) == True,
-                                # not_(col(Exercise.id).in_(planned_exercises)),
                             ),
                             col(Exercise.exercises_for_learning) == False,
                         )
@@ -393,15 +413,15 @@ class PlanCreator:
                     )
                 ).all()
 
-        logger.debug("\tdb_exercise len: {}".format(len(db_exercises)))
-
+        self._end_exercise_loop = False
         exercise_counter = 0
         while self._time_for_subtech > 0:
             if self._end_exercise_loop:
                 break
-            # if we have no time to do this exercise or
-            # we dont have any exercises -> free_time
-            if self._time_for_subtech <= 3 or not db_exercises:
+
+            self.check_borders()
+
+            if not db_exercises:
                 self._time_for_week_free += self._time_for_subtech
                 break
 
@@ -412,8 +432,7 @@ class PlanCreator:
                 logger.warning(f"Invalid exercise found, skipping")
                 continue
 
-            # is shifted in 1 in the right direction
-            # the harder one is in prio
+            # Determine current impact based on exercise type
             if (
                 exercise.simulation_exercises
                 or exercise.exercises_with_the_ball_on_your_own
@@ -425,16 +444,19 @@ class PlanCreator:
                 current_impact = Impact.EFFICIENCY
             elif exercise.exercises_in_difficult_conditions:
                 current_impact = Impact.SCORE
+            else:
+                logger.warning(
+                    f"Exercise {exercise.id} has no matching impact type, skipping"
+                )
+                continue
 
             if not impact_exists(current_impact):
                 continue
 
-            # add to planned exercises pool to ensure that we will
-            # not have any dublicated in the future
-            # planned_exercises.append(exercise.id)
             exercise_counter += 1
             self._time_for_subtech -= exercise.time_per_exercise
-            # calculate best zone
+
+            # Calculate best zone
             zone_result = self.session.exec(
                 select(col(ZoneSum.zone), func.max(col(ZoneSum.prozent))).where(
                     and_(
@@ -446,9 +468,10 @@ class PlanCreator:
                 )
             ).first()
 
-            # Validate zone exists
             if not zone_result or not zone_result.zone:
-                logger.warning(f"No zone data found for player {self.player}, tech {tech.tech}, subtech {subtech.subtech}, impact {current_impact.name}")
+                logger.warning(
+                    f"No zone data found for player {self.player}, tech {tech.tech}, subtech {subtech.subtech}, impact {current_impact.name}"
+                )
                 continue
 
             zone = zone_result
@@ -465,66 +488,80 @@ class PlanCreator:
                 ).first()
                 or 0
             )
-            
+
             try:
+                # Parse zone string safely
+                zone_parts = zone.zone.split("-")
+                if len(zone_parts) != 2:
+                    logger.warning(f"Invalid zone format: {zone.zone}")
+                    continue
+
+                from_zone = int(zone_parts[0])
+                to_zone = int(zone_parts[1])
+
                 db_exercise = PlanExercise(
                     id=max_id + 1,
                     player=self.player,
                     plan=self.plan.id,
                     week=plan_week.week,
                     exercise=exercise.id,
-                    from_zone=int(zone.zone.split("-")[0]),
-                    to_zone=int(zone.zone.split("-")[1]),
+                    from_zone=from_zone,
+                    to_zone=to_zone,
                 )
                 self._time_for_normal_part -= exercise.time_per_exercise
-                if self._time_for_normal_part <= 3:
+                if self._time_for_normal_part <= self.BORDER_PARTS_MINUTES:
                     self._end_exercise_loop = True
+                    self._end_subtech_loop = True
+                    self._end_tech_loop = True
                 self._week_exercises.append((db_exercise, exercise.time_per_exercise))
                 self.session.add(db_exercise)
-                
+
                 # Flush to catch constraint violations early
                 self.session.flush()
+            except (ValueError, IndexError) as e:
+                logger.error(f"Error parsing zone or creating PlanExercise: {e}")
+                continue
             except Exception as e:
                 logger.error(f"Failed to create PlanExercise: {e}")
-                self.session.rollback()
                 continue
 
     async def process_unused_subtech(
-        self, plan_week: PlanWeek, tech: Tech, subtech: Subtech
+        self, plan_week: PlanWeek, tech: Tech, subtech: Subtech, subtechs_len: int
     ):
         """
         Process a subtechnique that the player has not used before.
-        
+
         Args:
             plan_week (PlanWeek): Current week being processed
             tech (Tech): Parent technique
             subtech (Subtech): Subtechnique to process
-            
+
         This method handles new techniques for the player:
         - Calculates time allocation based on potential improvement areas
         - Selects learning-focused exercises to introduce new skills
         - Uses the same week-based impact logic as used subtechs
         - Emphasizes exercises marked for learning
         - Tracks exercises separately for learning progression
-        
+
         The learning approach helps players gradually acquire new techniques
         while building on their existing skill foundation.
         """
-        self._time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent  # time_for_subtech
-        self._time_for_week_free += self._time_for_subtech - floor(self._time_for_subtech)  # free_time
+        self._time_for_subtech = (
+            settings.MINUTES_IN_WEEK / subtechs_len
+        )  # time_for_subtech
+        self._time_for_week_free += self._time_for_subtech - floor(
+            self._time_for_subtech
+        )  # free_time
         self._time_for_subtech = floor(self._time_for_subtech)  # time_for_subtech
 
-        # check if the whole subtech <= 3 minutes
-        if self._time_for_subtech <= 3:
-            self._time_for_week_free += self._time_for_subtech
-            return
+        self.check_borders()
 
         impacts = self.session.exec(
             select(ImpactSum).where(
                 and_(
                     col(ImpactSum.player) == self.player,
-                    col(ImpactSum.tech) == tech.tech,
-                    col(ImpactSum.subtech) == subtech.subtech,
+                    col(ImpactSum.tech) == tech.id,
+                    col(ImpactSum.subtech) == subtech.id,
                 )
             )
         ).all()
@@ -546,7 +583,7 @@ class PlanCreator:
                         and_(
                             col(Exercise.id).in_(
                                 select(ExerciseToSubtech.exercise_id).where(
-                                    col(ExerciseToSubtech.subtech_id) == subtech.subtech
+                                    col(ExerciseToSubtech.subtech_id) == subtech.id
                                 )
                             ),
                             or_(
@@ -567,7 +604,7 @@ class PlanCreator:
                         and_(
                             col(Exercise.id).in_(
                                 select(ExerciseToSubtech.exercise_id).where(
-                                    col(ExerciseToSubtech.subtech_id) == subtech.subtech
+                                    col(ExerciseToSubtech.subtech_id) == subtech.id
                                 )
                             ),
                             or_(
@@ -581,13 +618,14 @@ class PlanCreator:
                 ).all()
 
         exercise_counter = 0
-        exercises = []
+        self._end_exercise_loop = False
         while self._time_for_subtech > 0:
             if self._end_exercise_loop:
                 break
-            # if we have no time to do this exercise or
-            # we dont have any exercises -> free_time
-            if self._time_for_subtech <= 3 or not db_exercises:
+
+            self.check_borders()
+
+            if not db_exercises:
                 self._time_for_week_free += self._time_for_subtech
                 break
 
@@ -598,8 +636,7 @@ class PlanCreator:
                 logger.warning(f"Invalid exercise found, skipping")
                 continue
 
-            # is shifted in 1 in the right direction
-            # the harder one is in prio
+            # Determine current impact based on exercise type
             if (
                 exercise.simulation_exercises
                 or exercise.exercises_with_the_ball_on_your_own
@@ -611,24 +648,25 @@ class PlanCreator:
                 current_impact = Impact.EFFICIENCY
             elif exercise.exercises_in_difficult_conditions:
                 current_impact = Impact.SCORE
+            else:
+                logger.warning(
+                    f"Exercise {exercise.id} has no matching impact type, skipping"
+                )
+                continue
 
             if not impact_exists(current_impact):
                 continue
 
-            # add to planned exercises pool to ensure that we will
-            # not have any dublicated in the future
-            # planned_exercises.append(exercise.id)
             exercise_counter += 1
             self._time_for_subtech -= exercise.time_per_exercise
-            logger.debug(">5 -> exercise: {}".format(self._time_for_subtech))
 
             # calculate best zone
             zone_result = self.session.exec(
                 select(col(ZoneSum.zone), func.max(col(ZoneSum.prozent))).where(
                     and_(
                         col(ZoneSum.player) == self.player,
-                        col(ZoneSum.tech) == tech.tech,
-                        col(ZoneSum.subtech) == subtech.subtech,
+                        col(ZoneSum.tech) == tech.id,
+                        col(ZoneSum.subtech) == subtech.id,
                         col(ZoneSum.impact) == current_impact.name,
                     )
                 )
@@ -636,7 +674,9 @@ class PlanCreator:
 
             # Validate zone exists
             if not zone_result or not zone_result.zone:
-                logger.warning(f"No zone data found for player {self.player}, tech {tech.tech}, subtech {subtech.subtech}, impact {current_impact.name}")
+                logger.warning(
+                    f"No zone data found for player {self.player}, tech {tech.tech}, subtech {subtech.id}, impact {current_impact.name}"
+                )
                 continue
 
             zone = zone_result
@@ -653,7 +693,7 @@ class PlanCreator:
                 ).first()
                 or 0
             )
-            
+
             try:
                 db_exercise = PlanExercise(
                     id=max_id + 1,
@@ -665,61 +705,83 @@ class PlanCreator:
                     to_zone=int(zone.zone.split("-")[1]),
                 )
                 self._time_for_learning_part -= exercise.time_per_exercise
-                if self._time_for_learning_part <= 3:
+                if self._time_for_learning_part <= self.BORDER_PARTS_MINUTES:
                     self._end_exercise_loop = True
+                    self._end_subtech_loop = True
+                    self._end_tech_loop = True
                 self._week_exercises.append((db_exercise, exercise.time_per_exercise))
                 self.session.add(db_exercise)
-                
+
                 # Flush to catch constraint violations early
                 self.session.flush()
             except Exception as e:
                 logger.error(f"Failed to create PlanExercise: {e}")
-                self.session.rollback()
                 continue
 
     async def teardown(self):
         """
         Clean up existing plan data before creating a new plan.
-        
+
         This method:
         - Checks foreign key constraints status
         - Removes existing plan records for the player
         - Removes associated plan week records
         - Commits the cleanup to ensure clean slate for new plan
-        
+
         The teardown ensures that each plan generation starts fresh without
         conflicts from previous planning attempts.
         """
-        # teardown last plan TODO
-        fk_status_result = self.session.exec(
-            text("PRAGMA foreign_keys;")
-        ).scalar_one_or_none()
-        logger.debug(f"PRAGMA foreign_keys status before delete: {fk_status_result}")
-
         # teardown last plan if it exists
         existing_plan = self.session.exec(
-            select(Plan).where(and_(col(Plan.player) == self.player, col(Plan.id) == 1))
+            select(Plan).where(and_(col(Plan.player) == self.player, col(Plan.id) == self.DEFAULT_PLAN_ID))
         ).first()
         if existing_plan:
             self.session.exec(
                 delete(Plan).where(
-                    and_(col(Plan.player) == self.player, col(Plan.id) == 1)
+                    and_(col(Plan.player) == self.player, col(Plan.id) == self.DEFAULT_PLAN_ID)
                 )
             )
 
         # teardown plan weeks
         plan_weeks = self.session.exec(
             select(PlanWeek).where(
-                and_(col(PlanWeek.player) == self.player, col(PlanWeek.plan) == 1)
+                and_(col(PlanWeek.player) == self.player, col(PlanWeek.plan) == self.DEFAULT_PLAN_ID)
             )
         ).all()
         if plan_weeks:
             self.session.exec(
                 delete(PlanWeek).where(
-                    and_(col(PlanWeek.player) == self.player, col(PlanWeek.plan) == 1)
+                    and_(col(PlanWeek.player) == self.player, col(PlanWeek.plan) == self.DEFAULT_PLAN_ID)
+                )
+            )
+
+        # teardown plan exercises
+        plan_exercises = self.session.exec(
+            select(PlanExercise).where(
+                and_(col(PlanExercise.player) == self.player, col(PlanExercise.plan) == self.DEFAULT_PLAN_ID)
+            )
+        ).all()
+
+        if plan_exercises:
+            self.session.exec(
+                delete(PlanExercise).where(
+                    and_(col(PlanExercise.player) == self.player, col(PlanExercise.plan) == self.DEFAULT_PLAN_ID)
                 )
             )
         self.session.commit()
+
+
+    def check_borders(self):
+        if self._time_for_week < self.BORDER_WEEK_MINUTES:
+            self._time_for_week_free += self._time_for_week
+            self._end_week_loop = True
+        elif self._time_for_tech < self.BORDER_TECH_MINUTES:
+            self._time_for_week_free += self._time_for_tech
+            self._end_tech_loop = True
+        elif self._time_for_subtech < self.BORDER_SUBTECH_MINUTES:
+            self._time_for_week_free += self._time_for_subtech
+            self._end_subtech_loop = True
+            self._end_exercise_loop = True
 
 
 async def calculate_sums(session: Session, player: int):
@@ -816,4 +878,3 @@ def calc_prozent(session: Session, model: SQLModel, total: int, player: int):
     for row in session.exec(select(model).where(col(model.player) == player)).all():
         row.prozent = row.sum_actions / total
         session.add(row)
-
