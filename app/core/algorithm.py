@@ -770,7 +770,6 @@ class PlanCreator:
             )
         self.session.commit()
 
-
     def check_borders(self):
         if self._time_for_week < self.BORDER_WEEK_MINUTES:
             self._time_for_week_free += self._time_for_week
