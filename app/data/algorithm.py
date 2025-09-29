@@ -82,6 +82,7 @@ class PlanExercise(SQLModel, table=True):
     week: int      = Field(primary_key=True)
     id: int        = Field(primary_key=True)
     exercise: int  = Field(foreign_key="exercise.id", ondelete="CASCADE")
+    checked: bool  = Field(default=False)
     from_zone: int = Field(...)
     to_zone: int   = Field(...)
 

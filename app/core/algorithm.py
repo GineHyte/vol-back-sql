@@ -112,7 +112,7 @@ class PlanCreator:
         self._time_for_normal_part = 0
         self._time_for_old_part = 0
         self._time_for_learning_part = 0
-        self._time_for_week_free = 0  # free time in week
+        self._this_shit_is_not_working = 0  # free time in week
 
         # lists
         self._week_exercises = []
@@ -135,9 +135,13 @@ class PlanCreator:
         based on predefined percentages for normal, old, and learning exercises.
         """
         # Disable foreign keys for the duration of plan creation
-        self.session.exec(text("PRAGMA foreign_keys = OFF"))
-        logger.debug("Foreign keys disabled for plan creation")
-
+        try:
+            self.session.exec(text("PRAGMA foreign_keys = OFF"))
+            logger.debug("Foreign keys disabled for plan creation")
+        except:
+            self.session.rollback()
+            await self.create_plan()
+            return 
         try:
             # teardown first
             await self.teardown()
@@ -151,7 +155,7 @@ class PlanCreator:
                     break
                 # init plan variables
                 self._time_for_week = settings.MINUTES_IN_WEEK
-                self._time_for_week_free = 0  # free_time
+                self._this_shit_is_not_working = 0  # free_time
                 self._week_exercises = []  # week_exercises
                 percentages_for_exercises = settings.PERCENTAGE_EXERCISES[week - 1]
                 self._time_for_normal_part = (
@@ -171,6 +175,8 @@ class PlanCreator:
                 self.session.refresh(plan_week)
 
                 await self.process_week(plan_week)
+
+                await self.fill_with_game(plan_week)
 
             self.session.commit()
 
@@ -258,15 +264,13 @@ class PlanCreator:
                         self.session.add(new_exercise)
                         time_per_exercise = self.session.get(Exercise, new_exercise.exercise).time_per_exercise
                         self._week_exercises.append((new_exercise, time_per_exercise))
-                        self._time_for_week_free -= time_per_exercise
                         self.session.flush()  # Flush to catch constraint violations early
                     except Exception as e:
                         logger.error(f"Failed to create old PlanExercise: {e}")
                         self.session.rollback()
                         continue
-        logger.info("time used: {}/{}".format(sum(map(lambda x: x[1], self._week_exercises)), settings.MINUTES_IN_WEEK))  
         self._exercises.append(self._week_exercises)
-        self._time_for_week_free = floor(self._time_for_week_free)
+        self._this_shit_is_not_working = floor(self._this_shit_is_not_working)
         logger.debug(
             "- week: {}, found exercises: {}".format(
                 plan_week.week, len(self._week_exercises)
@@ -346,7 +350,7 @@ class PlanCreator:
         - Even weeks: Focus on EFFICIENCY/SCORE impacts with pairs/groups/difficult conditions
         """
         self._time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent
-        self._time_for_week_free += self._time_for_subtech - floor(
+        self._this_shit_is_not_working += self._time_for_subtech - floor(
             self._time_for_subtech
         )
         self._time_for_subtech = floor(self._time_for_subtech)
@@ -422,7 +426,7 @@ class PlanCreator:
             self.check_borders()
 
             if not db_exercises:
-                self._time_for_week_free += self._time_for_subtech
+                self._this_shit_is_not_working += self._time_for_subtech
                 break
 
             exercise: Exercise = db_exercises.pop()
@@ -549,7 +553,7 @@ class PlanCreator:
         self._time_for_subtech = (
             settings.MINUTES_IN_WEEK / subtechs_len
         )  # time_for_subtech
-        self._time_for_week_free += self._time_for_subtech - floor(
+        self._this_shit_is_not_working += self._time_for_subtech - floor(
             self._time_for_subtech
         )  # free_time
         self._time_for_subtech = floor(self._time_for_subtech)  # time_for_subtech
@@ -626,7 +630,7 @@ class PlanCreator:
             self.check_borders()
 
             if not db_exercises:
-                self._time_for_week_free += self._time_for_subtech
+                self._this_shit_is_not_working += self._time_for_subtech
                 break
 
             exercise: Exercise = db_exercises.pop()
@@ -770,15 +774,59 @@ class PlanCreator:
             )
         self.session.commit()
 
+    async def fill_with_game(self, plan_week: PlanWeek):
+        time_used = sum(map(lambda x: x[1], self._week_exercises))
+        time_unused = settings.MINUTES_IN_WEEK - time_used
+        time_unused = floor(time_unused)
+        game_exercise = self.session.get(Exercise, -time_unused)
+
+        max_id = (
+            self.session.exec(
+                select(func.max(PlanExercise.id)).where(
+                    and_(
+                        col(PlanExercise.player) == self.player,
+                        col(PlanExercise.plan) == self.plan.id,
+                        col(PlanExercise.week) == plan_week.week,
+                    )
+                )
+            ).first()
+            or 0
+        )
+
+        if not game_exercise:
+            game_exercise = Exercise(
+                id=-time_unused,
+                name="Гра",
+                description="Гра",
+                time_per_exercise=time_unused,
+                difficulty=1
+            )
+            self.session.add(game_exercise)
+            self.session.commit()
+            self.session.refresh(game_exercise)
+
+        db_exercise = PlanExercise(
+            id=max_id + 1,
+            player=self.player,
+            plan=self.plan.id,
+            week=plan_week.week,
+            exercise=-time_unused,
+            from_zone=0,
+            to_zone=0,
+        )
+        self.session.add(db_exercise)
+        self.session.commit()
+
+
     def check_borders(self):
         if self._time_for_week < self.BORDER_WEEK_MINUTES:
-            self._time_for_week_free += self._time_for_week
+            self._this_shit_is_not_working += self._time_for_week
             self._end_week_loop = True
         elif self._time_for_tech < self.BORDER_TECH_MINUTES:
-            self._time_for_week_free += self._time_for_tech
+            self._this_shit_is_not_working += self._time_for_tech
             self._end_tech_loop = True
         elif self._time_for_subtech < self.BORDER_SUBTECH_MINUTES:
-            self._time_for_week_free += self._time_for_subtech
+            self._this_shit_is_not_working += self._time_for_subtech
             self._end_subtech_loop = True
             self._end_exercise_loop = True
 

@@ -284,3 +284,18 @@ async def get_plan_player_week(
         plan_week_public.exercises.append(exercise)
 
     return plan_week_public
+
+@router.get("/plan/{player_id}/{week_number}/{plan_exercise}")
+async def check_plan_exercise(
+    player_id: int,
+    week_number: int,
+    plan_exercise: int,
+    session: CoachSession = Depends(get_session),
+):
+    plan_exercise_db = session.get(PlanExercise, (player_id, 1, week_number, plan_exercise))
+    if not plan_exercise_db:
+        raise HTTPException(status_code=404, detail="Plan exercise not found")
+    plan_exercise_db.checked = not plan_exercise_db.checked
+    session.add(plan_exercise_db)
+    session.commit()
+    return Status(status="success", detail="Plan exercise checked successfully ({})".format(not plan_exercise_db.checked))
