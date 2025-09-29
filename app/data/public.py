@@ -51,8 +51,13 @@ class ActionPublic(ActionBase):
 class ExercisePublic(ExerciseBase):
     id: int = Field(None, description="Exercise ID")
     subtechs: List["ExerciseToSubtechPublic"] = Field(
-            [], description="List of ExerciseToSubtech relations"
-        )
+        [], description="List of ExerciseToSubtech relations"
+    )
+
+
+class PlanExercisePublic(ExercisePublic):
+    plan_exercise_id: int = Field(None, description="PlanExercise ID")
+    checked: bool = Field(None, description="Checked status")
 
 
 class TeamToPlayerPublic(TeamToPlayerBase):
@@ -73,11 +78,13 @@ class PlayerSumPublic(SQLModel):
     sum_actions: int = Field(default=0)
     prozent: float = Field(default=0)
 
+
 class TechSumPublic(SQLModel):
     player: int = Field(None, description="Player id")
     tech: NameWithId = Field(None, description="Tech id")
     sum_actions: int = Field(default=0)
     prozent: float = Field(default=0)
+
 
 class SubtechSumPublic(SQLModel):
     player: int = Field(None, description="Player id")
@@ -86,6 +93,7 @@ class SubtechSumPublic(SQLModel):
     sum_actions: int = Field(default=0)
     prozent: float = Field(default=0)
 
+
 class ImpactSumPublic(SQLModel):
     player: int = Field(None, description="Player id")
     tech: int = Field(None, description="Tech id")
@@ -93,6 +101,7 @@ class ImpactSumPublic(SQLModel):
     impact: Impact = Field(None, description="Impact")
     sum_actions: int = Field(default=0)
     prozent: float = Field(default=0)
+
 
 class ZoneSumPublic(SQLModel):
     player: int = Field(None, description="Player id")
@@ -103,28 +112,35 @@ class ZoneSumPublic(SQLModel):
     sum_actions: int = Field(default=0)
     prozent: float = Field(default=0)
 
+
 class PlanWeekPublic(SQLModel):
-    exercises: List[ExercisePublic] = Field(None, description="List of exercises")
+    exercises: List[PlanExercisePublic] = Field(None, description="List of exercises")
     week: int = Field(None, description="Week number")
+
 
 class CoachSessionPublic(CoachSessionBase):
     expires_in: int = Field(..., description="Expiration time in seconds")
+
 
 class PlayerStatsPublic(SQLModel):
     player_sum: PlayerSumPublic = Field()
     tech_top: List[TechSumPublic] = Field()
 
+
 class TechStatsPublic(SQLModel):
     tech_top: TechSumPublic = Field()
     subtech_top: List[SubtechSumPublic] = Field()
+
 
 class SubtechStatsPublic(SQLModel):
     subtech_top: SubtechSumPublic = Field()
     impact_top: List[ImpactSumPublic] = Field()
 
+
 class ImpactStatsPublic(SQLModel):
     impact_top: ImpactSumPublic = Field()
     zone_top: List[ZoneSumPublic] = Field()
+
 
 class ExerciseToSubtechPublic(ExerciseToSubtechBase):
     exercise: Optional[NameWithId] = Field(None, description="Exercise id with name")

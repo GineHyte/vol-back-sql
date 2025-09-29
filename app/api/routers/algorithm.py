@@ -273,8 +273,10 @@ async def get_plan_player_week(
         )
     ).all():
         db_exercise = session.get(Exercise, plan_exercise.exercise)
-        exercise = ExercisePublic(**db_exercise.model_dump(exclude=["subtechs"]))
+        exercise = PlanExercisePublic(**db_exercise.model_dump(exclude=["subtechs"]))
+        exercise.plan_exercise_id = plan_exercise.id
         exercise.subtechs = []
+        exercise.checked = plan_exercise.checked
         for exr_to_sub in db_exercise.subtechs:
             subtech = NameWithId(id=exr_to_sub.subtech.id, name=exr_to_sub.subtech.name)
             exr_to_sub_public = ExerciseToSubtechPublic(subtech=subtech)
@@ -285,7 +287,7 @@ async def get_plan_player_week(
 
     return plan_week_public
 
-@router.get("/plan/{player_id}/{week_number}/{plan_exercise}")
+@router.get("/plan/check/{player_id}/{week_number}/{plan_exercise}")
 async def check_plan_exercise(
     player_id: int,
     week_number: int,
