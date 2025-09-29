@@ -2,10 +2,10 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import paginate
-from sqlmodel import select, Session, delete, col
+from sqlmodel import select, Session, col
 
-from app.core.db import engine, get_session
-from app.data.db import Exercise, Subtech, Tech, ExerciseToSubtech
+from app.core.db import get_session
+from app.data.db import Exercise, Subtech, ExerciseToSubtech
 from app.core.logger import logger
 from app.data.utils import Status, NameWithId
 from app.data.update import ExerciseUpdate
@@ -21,7 +21,7 @@ async def get_exercises(
     *, session: Session = Depends(get_session)
 ) -> VolPage[ExercisePublic]:
     """Get all exercises"""
-    db_exercises = session.exec(select(Exercise)).all()
+    db_exercises = session.exec(select(Exercise).where(col(Exercise.id) > 0)).all()
     exersises = []
     for db_exercise in db_exercises:
         exercise = ExercisePublic(**db_exercise.model_dump(exclude=["subtech", "tech"]))
