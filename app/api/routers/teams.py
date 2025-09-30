@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi_pagination import Page, paginate
-from sqlmodel import select, Session, delete, col
+from sqlmodel import select, Session, delete, col, and_
 
 from app.core.db import engine, get_session
 from app.data.db import Team, Player, TeamToPlayer
@@ -27,7 +27,9 @@ async def get_teams(*, session: Session = Depends(get_session)) -> Page[TeamPubl
         team = TeamPublic(**db_team.model_dump(exclude={"players"}))
         for t_team_player in db_team.players:
             team_player_player = TeamToPlayerPublic(
-                player=NameWithId(id=t_team_player.player.id, name=t_team_player.player.first_name),
+                player=NameWithId(
+                    id=t_team_player.player.id, name=t_team_player.player.first_name + ' ' + t_team_player.player.last_name
+                ),
                 amplua=t_team_player.amplua,
             )
             team.players.append(team_player_player)
@@ -44,11 +46,13 @@ async def get_team(
     db_team = session.get(Team, team_id)
     if not db_team:
         raise HTTPException(status_code=404, detail="Team not found")
-    
+
     team = TeamPublic(**db_team.model_dump(exclude={"players"}))
     for t_team_player in db_team.players:
         team_player_player = TeamToPlayerPublic(
-            player=NameWithId(id=t_team_player.player.id, name=t_team_player.player.first_name),
+            player=NameWithId(
+                id=t_team_player.player.id, name=t_team_player.player.first_name + ' ' + t_team_player.player.last_name
+            ),
             amplua=t_team_player.amplua,
         )
         team.players.append(team_player_player)
@@ -68,10 +72,10 @@ async def new_team(
     ) + 1
     logger.debug("creating new team with id %s", new_id)
     player_ids = list(map(lambda x: x.player, team.players))
-    
+
     if len(set(player_ids)) != len(player_ids):
         raise HTTPException(status_code=404, detail="Players must be unique")
-    
+
     player_ampluas = list(map(lambda x: x.amplua, team.players))
     statement = select(Player).where(Player.id.in_(player_ids))
     players: List[Player] = session.exec(statement).all()
@@ -112,10 +116,33 @@ async def update_team(
     new_team_data = new_team.model_dump(exclude={"players"})
     new_team_data["players"] = []
 
-    for player in new_team.players:
-        new_team_data["players"].append(session.get(Player, player.player))
+    # teardown relations
+    old_relations = session.exec(
+        select(TeamToPlayer).where(TeamToPlayer.team_id == team_id)
+    ).all()
+    player_ids = list(map(lambda x: x.player.id, new_team.players))
+    logger.debug("check relation %s", player_ids)
+    for relation in old_relations:
+        if relation.player_id not in player_ids:
+            logger.debug("deleting relation %s", relation)
+            session.exec(
+                delete(TeamToPlayer).where(
+                    and_(
+                        col(TeamToPlayer.team_id) == team_id,
+                        col(TeamToPlayer.player_id) == relation.player.id,
+                    )
+                )
+            )
 
-    team.sqlmodel_update(new_team_data)
+    # add new ones
+    for relation in new_team.players:
+        db_relation = session.get(TeamToPlayer, (team_id, relation.player.id))
+        if db_relation:
+            continue  # skip if exists
+        db_relation = TeamToPlayer(
+            team_id=team_id, player_id=relation.player.id, amplua=relation.amplua
+        )
+        session.add(db_relation)
 
     session.add(team)
     session.commit()
