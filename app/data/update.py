@@ -32,7 +32,13 @@ class TeamUpdate(TeamBase):
 
 
 class ActionUpdate(ActionBase):
-    pass
+    game: Optional[int] = Field(None, description="Game ID")
+    team: Optional[int] = Field(None, description="Team ID")
+    player: Optional[int] = Field(None, description="Player ID")
+    subtech: Optional[int] = Field(None, description="Subtech ID")
+    from_zone: Optional[int] = Field(None, description="From zone")
+    to_zone: Optional[int] = Field(None, description="To zone")
+    impact: Optional[Impact] = Field(None, description="Impact")
 
 
 class TechUpdate(TechBase):
@@ -56,3 +62,8 @@ class ExerciseUpdate(ExerciseBase):
 
 class UpdateUpdate(UpdateBase):
     pass
+
+
+class ActionsBatchUpdateOptions(SQLModel):
+    actions: List[int] = Field(..., description="List of action IDs to update")
+    main_action: ActionUpdate = Field(..., description="Fields to update")

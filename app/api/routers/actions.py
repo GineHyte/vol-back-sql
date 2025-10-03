@@ -5,7 +5,7 @@ from sqlmodel import select, Session, col
 from app.core.db import get_session
 from app.data.db import Team, Game, Action, Player, Subtech, Coach
 from app.data.utils import Status, NameWithId
-from app.data.update import ActionUpdate
+from app.data.update import ActionUpdate, ActionsBatchUpdateOptions
 from app.data.create import ActionCreate
 from app.data.public import ActionPublic
 from app.core.logger import logger
@@ -104,3 +104,23 @@ async def update_action(
     session.commit()
 
     return Status(status="success", detail="Action updated")
+
+@router.put("/batch_update")
+async def batch_update_actions(
+    *, session: Session = Depends(get_session), actions_batch_update_options: ActionsBatchUpdateOptions
+):
+    """Batch update actions by ids"""
+    actions = session.exec(
+        select(Action).where(Action.id.in_(actions_batch_update_options.actions))
+    ).all()
+    if not actions:
+        raise HTTPException(status_code=404, detail="No actions found for the provided IDs")
+
+    for action in actions:
+        for field, value in actions_batch_update_options.main_action.model_dump(exclude_none=True).items():
+            setattr(action, field, value)
+        session.add(action)
+
+    session.commit()
+
+    return Status(status="success", detail="Actions batch updated")
