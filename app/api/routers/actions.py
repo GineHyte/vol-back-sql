@@ -88,7 +88,7 @@ async def delete_action(
     return Status(status="success", detail="Action deleted")
 
 
-@router.put("/{action_id}")
+@router.put("/update/{action_id}")
 async def update_action(
     *, session: Session = Depends(get_session), action_id: str, new_action: ActionUpdate
 ) -> Status:
