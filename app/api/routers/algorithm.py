@@ -1,13 +1,13 @@
-from sqlmodel import select, Session, col, SQLModel, delete, and_
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, SQLModel, and_, col, delete, select
 
+from app.core.algorithm import PlanCreator, calculate_sums
 from app.core.db import get_session
+from app.core.logger import logger
 from app.data.algorithm import *
 from app.data.db import *
 from app.data.public import *
-from app.core.logger import logger
-from app.data.utils import Status, Impact
-from app.core.algorithm import calculate_sums, PlanCreator
+from app.data.utils import Impact, Status
 
 router = APIRouter()
 
@@ -138,7 +138,9 @@ async def get_stats_tech(
     )
 
 
-@router.get("/stats/{player_id}/{tech_id}/{subtech_id}", response_model=SubtechStatsPublic)
+@router.get(
+    "/stats/{player_id}/{tech_id}/{subtech_id}", response_model=SubtechStatsPublic
+)
 async def get_stats_subtech(
     player_id: int,
     tech_id: int,
@@ -185,7 +187,10 @@ async def get_stats_subtech(
     )
 
 
-@router.get("/stats/{player_id}/{tech_id}/{subtech_id}/{impact}", response_model=ImpactStatsPublic)
+@router.get(
+    "/stats/{player_id}/{tech_id}/{subtech_id}/{impact}",
+    response_model=ImpactStatsPublic,
+)
 async def get_stats_impact(
     player_id: int,
     tech_id: int,
@@ -239,12 +244,15 @@ async def get_stats_impact(
 @router.get("/plan/calculate/{player_id}")
 async def generate_plan_player(
     player_id: int,
+    amplua: Amplua,
     session: CoachSession = Depends(get_session),
 ):
     player = session.get(Player, player_id)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
-    await PlanCreator(session, player_id).create_plan()
+    plan_creator = PlanCreator(session, player_id)
+    plan_creator.amplua = amplua
+    await plan_creator.create_plan()
     return Status(status="success", detail="Plan generated successfully")
 
 
@@ -287,6 +295,7 @@ async def get_plan_player_week(
 
     return plan_week_public
 
+
 @router.get("/plan/check/{player_id}/{week_number}/{plan_exercise}")
 async def check_plan_exercise(
     player_id: int,
@@ -294,10 +303,17 @@ async def check_plan_exercise(
     plan_exercise: int,
     session: CoachSession = Depends(get_session),
 ):
-    plan_exercise_db = session.get(PlanExercise, (player_id, 1, week_number, plan_exercise))
+    plan_exercise_db = session.get(
+        PlanExercise, (player_id, 1, week_number, plan_exercise)
+    )
     if not plan_exercise_db:
         raise HTTPException(status_code=404, detail="Plan exercise not found")
     plan_exercise_db.checked = not plan_exercise_db.checked
     session.add(plan_exercise_db)
     session.commit()
-    return Status(status="success", detail="Plan exercise checked successfully ({})".format(not plan_exercise_db.checked))
+    return Status(
+        status="success",
+        detail="Plan exercise checked successfully ({})".format(
+            not plan_exercise_db.checked
+        ),
+    )

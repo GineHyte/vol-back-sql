@@ -1,26 +1,26 @@
-from random import randint
 from math import floor
+from random import randint
 
-from sqlmodel import (
-    select,
-    Session,
-    col,
-    SQLModel,
-    text,
-    desc,
-    delete,
-    and_,
-    func,
-    or_,
-    not_,
-)
 from fastapi import HTTPException
+from sqlmodel import (
+    Session,
+    SQLModel,
+    and_,
+    col,
+    delete,
+    desc,
+    func,
+    not_,
+    or_,
+    select,
+    text,
+)
 
+from app.core.config import settings
+from app.core.logger import logger
 from app.data.algorithm import *
 from app.data.db import *
 from app.data.public import *
-from app.core.logger import logger
-from app.core.config import settings
 
 # TODO: types
 
@@ -39,6 +39,8 @@ class PlanCreator:
         WEEK_COUNT (int): Total number of weeks in the plan (default: 13)
         DEFAULT_PLAN_ID (int): Default plan identifier (default: 1)
     """
+
+    amplua: Amplua = Amplua.UNIVERSAL
 
     def __init__(self, session: Session, player: int):
         """
@@ -141,7 +143,7 @@ class PlanCreator:
         except:
             self.session.rollback()
             await self.create_plan()
-            return 
+            return
         try:
             # teardown first
             await self.teardown()
@@ -157,7 +159,7 @@ class PlanCreator:
                 self._time_for_week = settings.MINUTES_IN_WEEK
                 self._this_shit_is_not_working = 0  # free_time
                 self._week_exercises = []  # week_exercises
-                percentages_for_exercises = settings.PERCENTAGE_EXERCISES[week - 1]
+                percentages_for_exercises = self.get_percentages_for_exercises(week - 1)
                 self._time_for_normal_part = (
                     percentages_for_exercises[0] / 100 * settings.MINUTES_IN_WEEK
                 )  # normal_part
@@ -262,7 +264,9 @@ class PlanCreator:
                             to_zone=old_exercise.to_zone,
                         )
                         self.session.add(new_exercise)
-                        time_per_exercise = self.session.get(Exercise, new_exercise.exercise).time_per_exercise
+                        time_per_exercise = self.session.get(
+                            Exercise, new_exercise.exercise
+                        ).time_per_exercise
                         self._week_exercises.append((new_exercise, time_per_exercise))
                         self.session.flush()  # Flush to catch constraint violations early
                     except Exception as e:
@@ -527,6 +531,11 @@ class PlanCreator:
                 continue
             except Exception as e:
                 logger.error(f"Failed to create PlanExercise: {e}")
+                # Roll back the failed transaction so the Session can continue
+                try:
+                    self.session.rollback()
+                except Exception:
+                    pass
                 continue
 
     async def process_unused_subtech(
@@ -720,6 +729,11 @@ class PlanCreator:
                 self.session.flush()
             except Exception as e:
                 logger.error(f"Failed to create PlanExercise: {e}")
+                # Roll back the failed transaction so the Session can continue
+                try:
+                    self.session.rollback()
+                except Exception:
+                    pass
                 continue
 
     async def teardown(self):
@@ -737,39 +751,59 @@ class PlanCreator:
         """
         # teardown last plan if it exists
         existing_plan = self.session.exec(
-            select(Plan).where(and_(col(Plan.player) == self.player, col(Plan.id) == self.DEFAULT_PLAN_ID))
+            select(Plan).where(
+                and_(
+                    col(Plan.player) == self.player,
+                    col(Plan.id) == self.DEFAULT_PLAN_ID,
+                )
+            )
         ).first()
         if existing_plan:
             self.session.exec(
                 delete(Plan).where(
-                    and_(col(Plan.player) == self.player, col(Plan.id) == self.DEFAULT_PLAN_ID)
+                    and_(
+                        col(Plan.player) == self.player,
+                        col(Plan.id) == self.DEFAULT_PLAN_ID,
+                    )
                 )
             )
 
         # teardown plan weeks
         plan_weeks = self.session.exec(
             select(PlanWeek).where(
-                and_(col(PlanWeek.player) == self.player, col(PlanWeek.plan) == self.DEFAULT_PLAN_ID)
+                and_(
+                    col(PlanWeek.player) == self.player,
+                    col(PlanWeek.plan) == self.DEFAULT_PLAN_ID,
+                )
             )
         ).all()
         if plan_weeks:
             self.session.exec(
                 delete(PlanWeek).where(
-                    and_(col(PlanWeek.player) == self.player, col(PlanWeek.plan) == self.DEFAULT_PLAN_ID)
+                    and_(
+                        col(PlanWeek.player) == self.player,
+                        col(PlanWeek.plan) == self.DEFAULT_PLAN_ID,
+                    )
                 )
             )
 
         # teardown plan exercises
         plan_exercises = self.session.exec(
             select(PlanExercise).where(
-                and_(col(PlanExercise.player) == self.player, col(PlanExercise.plan) == self.DEFAULT_PLAN_ID)
+                and_(
+                    col(PlanExercise.player) == self.player,
+                    col(PlanExercise.plan) == self.DEFAULT_PLAN_ID,
+                )
             )
         ).all()
 
         if plan_exercises:
             self.session.exec(
                 delete(PlanExercise).where(
-                    and_(col(PlanExercise.player) == self.player, col(PlanExercise.plan) == self.DEFAULT_PLAN_ID)
+                    and_(
+                        col(PlanExercise.player) == self.player,
+                        col(PlanExercise.plan) == self.DEFAULT_PLAN_ID,
+                    )
                 )
             )
         self.session.commit()
@@ -799,7 +833,7 @@ class PlanCreator:
                 name="Гра",
                 description="Гра",
                 time_per_exercise=time_unused,
-                difficulty=1
+                difficulty=1,
             )
             self.session.add(game_exercise)
             self.session.commit()
@@ -817,7 +851,6 @@ class PlanCreator:
         self.session.add(db_exercise)
         self.session.commit()
 
-
     def check_borders(self):
         if self._time_for_week < self.BORDER_WEEK_MINUTES:
             self._this_shit_is_not_working += self._time_for_week
@@ -829,6 +862,14 @@ class PlanCreator:
             self._this_shit_is_not_working += self._time_for_subtech
             self._end_subtech_loop = True
             self._end_exercise_loop = True
+
+    def get_percentages_for_exercises(self, index: int):
+        if self.amplua is Amplua.ATTACKER:
+            return settings.PERCENTAGE_EXERCISES_ATTACKER[index]
+        elif self.amplua is Amplua.DEFENDER:
+            return settings.PERCENTAGE_EXERCISES_DEFENDER[index]
+        else:
+            return settings.PERCENTAGE_EXERCISES[index]
 
 
 async def calculate_sums(session: Session, player: int):
