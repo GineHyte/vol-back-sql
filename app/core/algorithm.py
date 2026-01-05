@@ -1,5 +1,6 @@
 from math import floor
 from random import randint
+from enum import Enum
 
 from fastapi import HTTPException
 from sqlmodel import (
@@ -23,6 +24,11 @@ from app.data.db import *
 from app.data.public import *
 
 # TODO: types
+
+class PartType(Enum):
+    NORMAL_PART = "NORMAL_PART"
+    OLD_PART = "OLD_PART"
+    LEARNING_PART = "LEARNING_PART"
 
 
 class PlanCreator:
@@ -102,7 +108,6 @@ class PlanCreator:
         self.session.refresh(self.plan)
 
         # end loop flags
-        self._end_week_loop = False
         self._end_tech_loop = False
         self._end_subtech_loop = False
         self._end_exercise_loop = False
@@ -152,9 +157,6 @@ class PlanCreator:
             await self.init_internal_variables()
 
             for week in range(1, self.WEEK_COUNT):
-                # check end_the_loop flag
-                if self._end_week_loop:
-                    break
                 # init plan variables
                 self._time_for_week = settings.MINUTES_IN_WEEK
                 self._this_shit_is_not_working = 0  # free_time
@@ -177,7 +179,6 @@ class PlanCreator:
                 self.session.refresh(plan_week)
 
                 await self.process_week(plan_week)
-
                 await self.fill_with_game(plan_week)
 
             self.session.commit()
@@ -237,7 +238,7 @@ class PlanCreator:
                     old_exercise = selected_exercise[0]
                     exercise_time = selected_exercise[1]
 
-                    self._time_for_old_part -= exercise_time
+                    self.reduce_time(exercise_time, PartType.OLD_PART)
 
                     max_id = (
                         self.session.exec(
@@ -293,6 +294,7 @@ class PlanCreator:
         routing each to either used subtech processing based on the player's
         history with the technique.
         """
+        self._time_for_tech = settings.MINUTES_IN_WEEK * tech.prozent
         self._end_subtech_loop = False
         for subtech in self.session.exec(
             select(SubtechSum)
@@ -358,7 +360,6 @@ class PlanCreator:
             self._time_for_subtech
         )
         self._time_for_subtech = floor(self._time_for_subtech)
-
         self.check_borders()
 
         impacts = self.session.exec(
@@ -462,7 +463,6 @@ class PlanCreator:
                 continue
 
             exercise_counter += 1
-            self._time_for_subtech -= exercise.time_per_exercise
 
             # Calculate best zone
             zone_result = self.session.exec(
@@ -516,7 +516,7 @@ class PlanCreator:
                     from_zone=from_zone,
                     to_zone=to_zone,
                 )
-                self._time_for_normal_part -= exercise.time_per_exercise
+                self.reduce_time(exercise.time_per_exercise, PartType.NORMAL_PART)
                 if self._time_for_normal_part <= self.BORDER_PARTS_MINUTES:
                     self._end_exercise_loop = True
                     self._end_subtech_loop = True
@@ -671,7 +671,6 @@ class PlanCreator:
                 continue
 
             exercise_counter += 1
-            self._time_for_subtech -= exercise.time_per_exercise
 
             # calculate best zone
             zone_result = self.session.exec(
@@ -717,7 +716,7 @@ class PlanCreator:
                     from_zone=int(zone.zone.split("-")[0]),
                     to_zone=int(zone.zone.split("-")[1]),
                 )
-                self._time_for_learning_part -= exercise.time_per_exercise
+                self.reduce_time(exercise.time_per_exercise, PartType.LEARNING_PART)
                 if self._time_for_learning_part <= self.BORDER_PARTS_MINUTES:
                     self._end_exercise_loop = True
                     self._end_subtech_loop = True
@@ -848,19 +847,21 @@ class PlanCreator:
             from_zone=0,
             to_zone=0,
         )
-        self.session.add(db_exercise)
-        self.session.commit()
+        try:
+            self.session.add(db_exercise)
+            self.session.commit()
+        except Exception as e:
+            logger.error("Error while adding plan exercise (fill with game)")
 
     def check_borders(self):
         if self._time_for_week < self.BORDER_WEEK_MINUTES:
             self._this_shit_is_not_working += self._time_for_week
-            self._end_week_loop = True
+            self._end_tech_loop = True
         elif self._time_for_tech < self.BORDER_TECH_MINUTES:
             self._this_shit_is_not_working += self._time_for_tech
-            self._end_tech_loop = True
+            self._end_subtech_loop = True
         elif self._time_for_subtech < self.BORDER_SUBTECH_MINUTES:
             self._this_shit_is_not_working += self._time_for_subtech
-            self._end_subtech_loop = True
             self._end_exercise_loop = True
 
     def get_percentages_for_exercises(self, index: int):
@@ -870,6 +871,17 @@ class PlanCreator:
             return settings.PERCENTAGE_EXERCISES_DEFENDER[index]
         else:
             return settings.PERCENTAGE_EXERCISES[index]
+
+    def reduce_time(self, time_for_exercise: float, part: PartType | None = None):
+        self._time_for_week -= time_for_exercise
+        self._time_for_tech -= time_for_exercise
+        self._time_for_subtech -= time_for_exercise
+        if part == PartType.NORMAL_PART:
+            self._time_for_normal_part -= time_for_exercise
+        elif part == PartType.OLD_PART:
+            self._time_for_old_part -= time_for_exercise
+        elif part == PartType.LEARNING_PART:
+            self._time_for_learning_part -= time_for_exercise
 
 
 async def calculate_sums(session: Session, player: int):
