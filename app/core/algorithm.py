@@ -811,6 +811,7 @@ class PlanCreator:
         time_used = sum(map(lambda x: x[1], self._week_exercises))
         time_unused = settings.MINUTES_IN_WEEK - time_used
         time_unused = floor(time_unused)
+        if time_unused <= 0: return
         game_exercise = self.session.get(Exercise, -time_unused)
 
         max_id = (
