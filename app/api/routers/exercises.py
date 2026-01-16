@@ -1,17 +1,17 @@
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import paginate
-from sqlmodel import select, Session, col
+from sqlmodel import Session, col, select
 
-from app.core.db import get_session
-from app.data.db import Exercise, Subtech, ExerciseToSubtech
-from app.core.logger import logger
-from app.data.utils import Status, NameWithId
-from app.data.update import ExerciseUpdate
-from app.data.create import ExerciseCreate
-from app.data.public import ExercisePublic, ExerciseToSubtechPublic
 from app.api.deps import VolPage
+from app.core.db import get_session
+from app.core.logger import logger
+from app.data.create import ExerciseCreate
+from app.data.db import Exercise, ExerciseToSubtech, Subtech
+from app.data.public import ExercisePublic, ExerciseToSubtechPublic
+from app.data.update import ExerciseUpdate
+from app.data.utils import NameWithId, Status
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ async def get_exercises(
     *, session: Session = Depends(get_session)
 ) -> VolPage[ExercisePublic]:
     """Get all exercises"""
-    db_exercises = session.exec(select(Exercise).where(col(Exercise.id) > 0)).all()
+    db_exercises = session.exec(select(Exercise).where(col(Exercise.id) >= 0)).all()
     exersises = []
     for db_exercise in db_exercises:
         exercise = ExercisePublic(**db_exercise.model_dump(exclude=["subtech", "tech"]))
@@ -70,12 +70,14 @@ async def create_exercise(
     *, session: Session = Depends(get_session), new_exercise: ExerciseCreate
 ) -> Status:
     """Create new exercise"""
-    db_exercise = Exercise(**new_exercise.model_dump(exclude={"subtechs"}))
-    # get new id
     new_id = (
         session.exec(select(col(Exercise.id)).order_by(Exercise.id.desc())).first() or 0
     ) + 1
+    if new_id < 0:
+        new_id = 0
     logger.debug("Creating new exersice with id %s", new_id)
+
+    db_exercise = Exercise(id=new_id, **new_exercise.model_dump(exclude={"subtechs"}))
     subtech_ids = list(map(lambda x: x.subtech, new_exercise.subtechs))
 
     if len(set(subtech_ids)) != len(subtech_ids):
@@ -87,11 +89,13 @@ async def create_exercise(
     if len(subtechs) != len(subtech_ids) or None in subtechs:
         raise HTTPException(status_code=404, detail="Subtech not found")
 
+    session.add(db_exercise)
+    session.flush()
+
     for subtech in subtech_ids:
         relation = ExerciseToSubtech(exercise_id=new_id, subtech_id=subtech)
         session.add(relation)
         logger.debug("creating new relation: %s - %s", new_id, subtech)
-    session.add(db_exercise)
     session.commit()
     return Status(status="success", detail="Exercise created")
 
