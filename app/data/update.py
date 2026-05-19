@@ -22,7 +22,9 @@ class PlayerUpdate(PlayerBase):
 
 
 class GameUpdate(GameBase):
-    pass
+    player_updates: List["GamePlayerUpdate"] = Field(
+        None, description="List of player updates for the game"
+    )
 
 
 class TeamUpdate(TeamBase):
@@ -67,3 +69,8 @@ class UpdateUpdate(UpdateBase):
 class ActionsBatchUpdateOptions(SQLModel):
     actions: List[int] = Field(..., description="List of action IDs to update")
     main_action: ActionUpdate = Field(..., description="Fields to update")
+
+
+class GamePlayerUpdate(SQLModel):
+    player_before: str = Field(None, description="Player ID before update")
+    player_after: str = Field(None, description="Player ID after update")

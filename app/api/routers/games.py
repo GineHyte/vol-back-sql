@@ -12,7 +12,6 @@ from app.data.create import GameCreate
 from app.data.public import GamePublic
 from app.core.logger import logger
 
-
 router = APIRouter()
 
 
@@ -114,11 +113,11 @@ async def delete_game(
     game = session.get(Game, game_id)
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
-    
+
     # Delete related actions
     session.exec(delete(Action).where(Action.game == game_id))
     session.commit()
-    
+
     # Delete the game
     session.delete(game)
     session.commit()
@@ -138,6 +137,20 @@ async def update_game(
         setattr(game, field, value)
 
     session.add(game)
+
+    if new_game.player_updates:
+        db_actions = session.exec(
+            select(Action).where(col(Action.game) == game_id)
+        ).all()
+        for action in db_actions:
+            for player_update in new_game.player_updates:
+                if action.player != player_update.player_before:
+                    continue
+
+                action.player = player_update.player_after
+
+            session.add(action)
+
     session.commit()
 
     return Status(status="success", detail="Team updated")
@@ -160,7 +173,7 @@ async def deep_clone_game(
     session.refresh(new_game)
     logger.debug(f"Cloning game {game_id} with data: {new_game}")
 
-    for action in session.exec(select(Action).where(Action.game == game_id)).all(): 
+    for action in session.exec(select(Action).where(Action.game == game_id)).all():
         action_clone = action.model_dump(exclude={"id", "game"})
         action_clone["game"] = new_game.id
         new_action = Action(**action_clone)
