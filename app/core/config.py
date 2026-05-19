@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str
     DESCRIPTION: str = ""
     VERSION: str
+    PORT: int = 8000
 
     SQLITE_DB: str
     DATETIME_FORMAT: str = "%Y-%m-%d %H:%M:%S"
