@@ -153,7 +153,7 @@ async def update_game(
 
                 action.player = player_update.player_after
 
-                logger.debug(player_update.player_after, team_a.players)
+                logger.info(player_update.player_after, team_a.players)
 
                 if player_update.player_after in team_a.players:
                     action.team = team_a.id
