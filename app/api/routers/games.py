@@ -142,6 +142,8 @@ async def update_game(
     team_a: Team = session.get(Team, new_game.team_a)
     team_b: Team = session.get(Team, new_game.team_b)
     
+    team_a_players = map(team_a.players, lambda x: x.player_id)
+    team_b_players = map(team_b.players, lambda x: x.player_id)
 
     if new_game.player_updates:
         db_actions: List[Action] = session.exec(
@@ -159,9 +161,9 @@ async def update_game(
                 logger.info(player_update.player_after)
                 logger.info(team_a.players)
 
-                if player_update.player_after in team_a.players:
+                if player_update.player_after in team_a_players:
                     action.team = team_a.id
-                elif player_update.player_after in team_b.players:
+                elif player_update.player_after in team_b_players:
                     action.team = team_b.id
 
             session.add(action)
