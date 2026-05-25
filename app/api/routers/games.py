@@ -159,11 +159,13 @@ async def update_game(
                 action.player = player_update.player_after
 
                 logger.info(player_update.player_after)
-                logger.info(team_a.players)
+                logger.info(team_a_players)
 
                 if player_update.player_after in team_a_players:
+                    logger.info("YESS, PLAYER IS iN TEAM A!!!!")
                     action.team = team_a.id
                 elif player_update.player_after in team_b_players:
+                    logger.info("YESS, PLAYER IS iN TEAM B!!!!")
                     action.team = team_b.id
 
             session.add(action)
