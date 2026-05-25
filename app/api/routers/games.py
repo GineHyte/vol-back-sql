@@ -142,14 +142,13 @@ async def update_game(
     team_a: Team = session.get(Team, new_game.team_a)
     team_b: Team = session.get(Team, new_game.team_b)
     
-    logger.info(bool(new_game.player_updates))
 
     if new_game.player_updates:
         db_actions: List[Action] = session.exec(
             select(Action).where(col(Action.game) == game_id)
         ).all()
-        logger.info(db_actions)
         for action in db_actions:
+            logger.info(action)
             for player_update in new_game.player_updates:
                 if action.player != player_update.player_before:
                     continue
