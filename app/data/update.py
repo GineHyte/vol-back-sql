@@ -72,5 +72,5 @@ class ActionsBatchUpdateOptions(SQLModel):
 
 
 class GamePlayerUpdate(SQLModel):
-    player_before: str = Field(None, description="Player ID before update")
-    player_after: str = Field(None, description="Player ID after update")
+    player_before: int = Field(None, description="Player ID before update")
+    player_after: int = Field(None, description="Player ID after update")
