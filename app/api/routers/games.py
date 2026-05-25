@@ -142,8 +142,8 @@ async def update_game(
     team_a: Team = session.get(Team, new_game.team_a)
     team_b: Team = session.get(Team, new_game.team_b)
     
-    team_a_players = map(team_a.players, lambda x: x.player_id)
-    team_b_players = map(team_b.players, lambda x: x.player_id)
+    team_a_players = map(lambda x: x.player_id, team_a.players)
+    team_b_players = map(lambda x: x.player_id, team_b.players)
 
     if new_game.player_updates:
         db_actions: List[Action] = session.exec(
