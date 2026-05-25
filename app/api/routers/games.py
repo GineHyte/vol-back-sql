@@ -134,7 +134,8 @@ async def update_game(
         raise HTTPException(status_code=404, detail="Game not found")
 
     for field, value in new_game.model_dump(exclude_none=True).items():
-        setattr(game, field, value)
+        if field in game.__dict__:
+            setattr(game, field, value)
 
     session.add(game)
 
