@@ -150,6 +150,7 @@ async def update_game(
         for action in db_actions:
             logger.info(action)
             for player_update in new_game.player_updates:
+                print(f"  - player update {player_update.player_before} -> {player_update.player_after}")
                 if action.player != player_update.player_before:
                     continue
 
