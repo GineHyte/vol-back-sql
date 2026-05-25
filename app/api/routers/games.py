@@ -129,7 +129,7 @@ async def update_game(
     *, session: Session = Depends(get_session), game_id: str, new_game: GameUpdate
 ) -> Status:
     """Update game by id"""
-    game = session.get(Game, game_id)
+    game: Game = session.get(Game, game_id)
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
 
@@ -139,8 +139,11 @@ async def update_game(
 
     session.add(game)
 
+    team_a: Team = session.get(Team, game.team_a)
+    team_b: Team = session.get(Team, game.team_b)
+
     if new_game.player_updates:
-        db_actions = session.exec(
+        db_actions: List[Action] = session.exec(
             select(Action).where(col(Action.game) == game_id)
         ).all()
         for action in db_actions:
@@ -149,6 +152,11 @@ async def update_game(
                     continue
 
                 action.player = player_update.player_after
+
+                if player_update.player_after in team_a.players:
+                    action.team = team_a.id
+                elif player_update.player_after in team_b.players:
+                    action.team = team_b.id
 
             session.add(action)
 
