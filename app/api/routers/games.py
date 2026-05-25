@@ -150,22 +150,15 @@ async def update_game(
             select(Action).where(col(Action.game) == game_id)
         ).all()
         for action in db_actions:
-            logger.info(action)
             for player_update in new_game.player_updates:
-                print(f"  - player update {player_update.player_before} -> {player_update.player_after}")
                 if action.player != player_update.player_before:
                     continue
 
                 action.player = player_update.player_after
 
-                logger.info(player_update.player_after)
-                logger.info(team_a_players)
-
                 if player_update.player_after in team_a_players:
-                    logger.info("YESS, PLAYER IS iN TEAM A!!!!")
                     action.team = team_a.id
                 elif player_update.player_after in team_b_players:
-                    logger.info("YESS, PLAYER IS iN TEAM B!!!!")
                     action.team = team_b.id
 
             session.add(action)
