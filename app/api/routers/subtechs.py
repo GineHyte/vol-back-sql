@@ -78,7 +78,7 @@ async def delete_subtech(
     return Status(status="success", detail="Subtech deleted")
 
 
-@router.put("/{tech_id}")
+@router.put("/{subtech_id}")
 async def update_subtech(
     *,
     session: Session = Depends(get_session),
