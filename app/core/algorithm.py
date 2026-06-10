@@ -97,7 +97,7 @@ class PlanCreator:
         ).all()
         self.unused_techs = self.session.exec(
             select(Tech).where(
-                col(Tech.id).in_(map(lambda x: x.tech, self.used_techs)),
+                col(Tech.id).not_in(map(lambda x: x.tech, self.used_techs)),
             )
         ).all()
         self.plan = Plan(
@@ -119,7 +119,7 @@ class PlanCreator:
         self._time_for_normal_part = 0
         self._time_for_old_part = 0
         self._time_for_learning_part = 0
-        self._this_shit_is_not_working = 0  # free time in week
+        self._free_time = 0  # free time in week
 
         # lists
         self._week_exercises = []
@@ -147,8 +147,7 @@ class PlanCreator:
             logger.debug("Foreign keys disabled for plan creation")
         except:
             self.session.rollback()
-            await self.create_plan()
-            return
+            return await self.create_plan()
         try:
             # teardown first
             await self.teardown()
@@ -159,7 +158,7 @@ class PlanCreator:
             for week in range(1, self.WEEK_COUNT):
                 # init plan variables
                 self._time_for_week = settings.MINUTES_IN_WEEK
-                self._this_shit_is_not_working = 0  # free_time
+                self._free_time = 0  # free_time
                 self._week_exercises = []  # week_exercises
                 percentages_for_exercises = self.get_percentages_for_exercises(week - 1)
                 self._time_for_normal_part = (
@@ -209,6 +208,7 @@ class PlanCreator:
 
         self._end_tech_loop = False
         for tech in self.used_techs:
+            self.check_borders(PartType.NORMAL_PART)
             # check end_the_loop flag
             if self._end_tech_loop:
                 break
@@ -217,6 +217,7 @@ class PlanCreator:
 
         self._end_tech_loop = False
         for tech in self.unused_techs:
+            self.check_borders(PartType.LEARNING_PART)
             # check end_the_loop flag
             if self._end_tech_loop:
                 break
@@ -268,14 +269,14 @@ class PlanCreator:
                         time_per_exercise = self.session.get(
                             Exercise, new_exercise.exercise
                         ).time_per_exercise
-                        self._week_exercises.append((new_exercise, time_per_exercise))
                         self.session.flush()  # Flush to catch constraint violations early
+                        self._week_exercises.append((new_exercise, time_per_exercise))
                     except Exception as e:
                         logger.error(f"Failed to create old PlanExercise: {e}")
                         self.session.rollback()
                         continue
         self._exercises.append(self._week_exercises)
-        self._this_shit_is_not_working = floor(self._this_shit_is_not_working)
+        self._free_time = floor(self._free_time)
         logger.debug(
             "- week: {}, found exercises: {}".format(
                 plan_week.week, len(self._week_exercises)
@@ -356,7 +357,7 @@ class PlanCreator:
         - Even weeks: Focus on EFFICIENCY/SCORE impacts with pairs/groups/difficult conditions
         """
         self._time_for_subtech = settings.MINUTES_IN_WEEK * subtech.prozent
-        self._this_shit_is_not_working += self._time_for_subtech - floor(
+        self._free_time += self._time_for_subtech - floor(
             self._time_for_subtech
         )
         self._time_for_subtech = floor(self._time_for_subtech)
@@ -431,7 +432,7 @@ class PlanCreator:
             self.check_borders()
 
             if not db_exercises:
-                self._this_shit_is_not_working += self._time_for_subtech
+                self._free_time += self._time_for_subtech
                 break
 
             exercise: Exercise = db_exercises.pop()
@@ -521,11 +522,11 @@ class PlanCreator:
                     self._end_exercise_loop = True
                     self._end_subtech_loop = True
                     self._end_tech_loop = True
-                self._week_exercises.append((db_exercise, exercise.time_per_exercise))
                 self.session.add(db_exercise)
 
                 # Flush to catch constraint violations early
                 self.session.flush()
+                self._week_exercises.append((db_exercise, exercise.time_per_exercise))
             except (ValueError, IndexError) as e:
                 logger.error(f"Error parsing zone or creating PlanExercise: {e}")
                 continue
@@ -562,73 +563,25 @@ class PlanCreator:
         self._time_for_subtech = (
             settings.MINUTES_IN_WEEK / subtechs_len
         )  # time_for_subtech
-        self._this_shit_is_not_working += self._time_for_subtech - floor(
+        self._free_time += self._time_for_subtech - floor(
             self._time_for_subtech
         )  # free_time
         self._time_for_subtech = floor(self._time_for_subtech)  # time_for_subtech
 
         self.check_borders()
 
-        impacts = self.session.exec(
-            select(ImpactSum).where(
+        db_exercises = self.session.exec(
+            select(Exercise).where(
                 and_(
-                    col(ImpactSum.player) == self.player,
-                    col(ImpactSum.tech) == tech.id,
-                    col(ImpactSum.subtech) == subtech.id,
+                    col(Exercise.id).in_(
+                        select(ExerciseToSubtech.exercise_id).where(
+                            col(ExerciseToSubtech.subtech_id) == subtech.id
+                        )
+                    ),
+                    col(Exercise.exercises_for_learning) == True,
                 )
             )
         ).all()
-        if not impacts:
-            return
-
-        existing_impacts = list(map(lambda x: x.impact, impacts))
-
-        def impact_exists(impact: Impact) -> bool:
-            return impact in existing_impacts
-
-        db_exercises = []
-        # get exercises using week and impact as a parameter
-        # also calculate the time for the impact
-        if plan_week.week % 2 == 1:
-            if impact_exists(Impact.FAIL) or impact_exists(Impact.MISTAKE):
-                db_exercises = self.session.exec(
-                    select(Exercise).where(
-                        and_(
-                            col(Exercise.id).in_(
-                                select(ExerciseToSubtech.exercise_id).where(
-                                    col(ExerciseToSubtech.subtech_id) == subtech.id
-                                )
-                            ),
-                            or_(
-                                col(Exercise.simulation_exercises) == True,
-                                col(Exercise.exercises_with_the_ball_on_your_own)
-                                == True,
-                                col(Exercise.exercises_with_the_ball_in_pairs) == True,
-                                # not_(col(Exercise.id).in_(planned_exercises)),
-                            ),
-                            col(Exercise.exercises_for_learning) == True,
-                        )
-                    )
-                ).all()
-        elif plan_week.week % 2 == 0:
-            if impact_exists(Impact.EFFICIENCY) or impact_exists(Impact.SCORE):
-                db_exercises = self.session.exec(
-                    select(Exercise).where(
-                        and_(
-                            col(Exercise.id).in_(
-                                select(ExerciseToSubtech.exercise_id).where(
-                                    col(ExerciseToSubtech.subtech_id) == subtech.id
-                                )
-                            ),
-                            or_(
-                                col(Exercise.exercises_with_the_ball_in_pairs) == True,
-                                col(Exercise.exercises_with_the_ball_in_groups) == True,
-                                col(Exercise.exercises_in_difficult_conditions) == True,
-                            ),
-                            col(Exercise.exercises_for_learning) == True,
-                        )
-                    )
-                ).all()
 
         exercise_counter = 0
         self._end_exercise_loop = False
@@ -639,7 +592,7 @@ class PlanCreator:
             self.check_borders()
 
             if not db_exercises:
-                self._this_shit_is_not_working += self._time_for_subtech
+                self._free_time += self._time_for_subtech
                 break
 
             exercise: Exercise = db_exercises.pop()
@@ -649,49 +602,7 @@ class PlanCreator:
                 logger.warning(f"Invalid exercise found, skipping")
                 continue
 
-            # Determine current impact based on exercise type
-            if (
-                exercise.simulation_exercises
-                or exercise.exercises_with_the_ball_on_your_own
-            ):
-                current_impact = Impact.FAIL
-            elif exercise.exercises_with_the_ball_in_pairs:
-                current_impact = Impact.MISTAKE
-            elif exercise.exercises_with_the_ball_in_groups:
-                current_impact = Impact.EFFICIENCY
-            elif exercise.exercises_in_difficult_conditions:
-                current_impact = Impact.SCORE
-            else:
-                logger.warning(
-                    f"Exercise {exercise.id} has no matching impact type, skipping"
-                )
-                continue
-
-            if not impact_exists(current_impact):
-                continue
-
             exercise_counter += 1
-
-            # calculate best zone
-            zone_result = self.session.exec(
-                select(col(ZoneSum.zone), func.max(col(ZoneSum.prozent))).where(
-                    and_(
-                        col(ZoneSum.player) == self.player,
-                        col(ZoneSum.tech) == tech.id,
-                        col(ZoneSum.subtech) == subtech.id,
-                        col(ZoneSum.impact) == current_impact.name,
-                    )
-                )
-            ).first()
-
-            # Validate zone exists
-            if not zone_result or not zone_result.zone:
-                logger.warning(
-                    f"No zone data found for player {self.player}, tech {tech.tech}, subtech {subtech.id}, impact {current_impact.name}"
-                )
-                continue
-
-            zone = zone_result
 
             max_id = (
                 self.session.exec(
@@ -713,19 +624,19 @@ class PlanCreator:
                     plan=self.plan.id,
                     week=plan_week.week,
                     exercise=exercise.id,
-                    from_zone=int(zone.zone.split("-")[0]),
-                    to_zone=int(zone.zone.split("-")[1]),
+                    from_zone=6,
+                    to_zone=6,
                 )
                 self.reduce_time(exercise.time_per_exercise, PartType.LEARNING_PART)
                 if self._time_for_learning_part <= self.BORDER_PARTS_MINUTES:
                     self._end_exercise_loop = True
                     self._end_subtech_loop = True
                     self._end_tech_loop = True
-                self._week_exercises.append((db_exercise, exercise.time_per_exercise))
                 self.session.add(db_exercise)
 
                 # Flush to catch constraint violations early
                 self.session.flush()
+                self._week_exercises.append((db_exercise, exercise.time_per_exercise))
             except Exception as e:
                 logger.error(f"Failed to create PlanExercise: {e}")
                 # Roll back the failed transaction so the Session can continue
@@ -853,16 +764,20 @@ class PlanCreator:
             self.session.commit()
         except Exception as e:
             logger.error("Error while adding plan exercise (fill with game)")
+            self.session.rollback()
 
-    def check_borders(self):
+    def check_borders(self, part: PartType | None = None):
+        if (part == PartType.NORMAL_PART and self._time_for_normal_part < self.BORDER_PARTS_MINUTES) or \
+           (part == PartType.LEARNING_PART and self._time_for_learning_part < self.BORDER_PARTS_MINUTES):
+            self._end_tech_loop = True
         if self._time_for_week < self.BORDER_WEEK_MINUTES:
-            self._this_shit_is_not_working += self._time_for_week
+            self._free_time += self._time_for_week
             self._end_tech_loop = True
         elif self._time_for_tech < self.BORDER_TECH_MINUTES:
-            self._this_shit_is_not_working += self._time_for_tech
+            self._free_time += self._time_for_tech
             self._end_subtech_loop = True
         elif self._time_for_subtech < self.BORDER_SUBTECH_MINUTES:
-            self._this_shit_is_not_working += self._time_for_subtech
+            self._free_time += self._time_for_subtech
             self._end_exercise_loop = True
 
     def get_percentages_for_exercises(self, index: int):
